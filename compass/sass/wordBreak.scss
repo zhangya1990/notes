@@ -1,0 +1,7 @@
+@import "compass/css3";
+
+.em{
+  width:100px;
+  background: red;
+  @include word-break(break-all)
+}

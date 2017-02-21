@@ -1,0 +1,21 @@
+@import "compass/css3";
+
+
+.rounded{
+  @include border-radius(5px)
+}
+.topLeft{
+  @include border-top-left-radius(10px)
+}
+
+.topRight{
+  @include border-corner-radius(top,left,10px)
+}
+
+.opacity{
+  @include opacity(.5)
+}
+
+.inlineBlock{
+  @include inline-block
+}

@@ -1,0 +1,5 @@
+@import "compass/css3";
+
+.bg{
+  @include background-size(cover)
+}

@@ -1,0 +1,89 @@
+div {
+  margin: 7px;
+  color: #1875e7;
+  border-left: 1px solid #ccc; }
+  div h1 {
+    width: 20px;
+    height: 40px;
+    border-color: #1875e7; }
+  div a:hover {
+    color: #fff; }
+
+.class1, .class2 {
+  border: 1px solid #000; }
+
+.class2 {
+  float: left;
+  margin-right: 20px; }
+
+p {
+  border: 1px solid #999; }
+
+.while-4 {
+  width: 24px; }
+
+.while-3 {
+  width: 23px; }
+
+.while-2 {
+  width: 22px; }
+
+.while-1 {
+  width: 21px; }
+
+.item-20 {
+  width: 40px; }
+
+.item-18 {
+  width: 36px; }
+
+.item-16 {
+  width: 32px; }
+
+.item-14 {
+  width: 28px; }
+
+.item-12 {
+  width: 24px; }
+
+.item-10 {
+  width: 20px; }
+
+.item-8 {
+  width: 16px; }
+
+.item-6 {
+  width: 12px; }
+
+.item-4 {
+  width: 8px; }
+
+.item-2 {
+  width: 4px; }
+
+#sideBar {
+  width: 40px; }
+
+.com {
+  width: 20px;
+  height: 20px; }
+
+.box {
+  box-shadow: 1px 1px 1px #000, 2px 6px 10px #999; }
+
+@media only screen and (min-device-width: 320px) and (max-device-width: 568px) {
+  #logo {
+    background-image: url(/logo@2x.gif); } }
+.a-icon {
+  background-image: url("./a.gif"); }
+
+.b-icon {
+  background-image: url("./b.gif"); }
+
+.c-icon {
+  background-image: url("./c.gif"); }
+
+.d-icon {
+  background-image: url("./d.gif"); }
+
+/*# sourceMappingURL=1.css.map */

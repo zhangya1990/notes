@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>惰性单例</title>
+</head>
+<body>
+<button id="loginBtn">loginBtn</button>
+<button id="iframeBtn">iframeBtn</button>
+</body>
+<script>
+    //管理单例，保证只有一个实例
+    var getSingle = function(fn){
+        var result;
+        return function(){
+            return result || (result = fn.apply(this,arguments))
+        }
+    };
+
+    var createLoginLayer = function(){
+        var div = document.createElement('div');
+        div.innerHTML = 'hello world';
+        div.style.display = 'none';
+        document.body.appendChild(div);
+        return div
+    };
+    var createSingleLoginLayer = getSingle(createLoginLayer);
+    document.getElementById('loginBtn').onclick = function(){
+        //在需要的时候再创建实例
+        var loginLayer = createSingleLoginLayer();
+        loginLayer.style.display = 'block'
+    };
+
+    var createSingleIframe = getSingle(function(){
+        var iframe = document.createElement('iframe');
+        document.body.appendChild(iframe);
+        iframe.src =  'https://www.baidu.com';
+        iframe.style.display = 'none'
+        return iframe;
+    });
+
+    document.getElementById('iframeBtn').onclick = function(){
+        var loginLayer = createSingleIframe();
+        loginLayer.display = 'block'
+    }
+</script>
+</html>

@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+
+</body>
+<script>
+    var Widget = {
+        init:function(width,height){
+            this.width = width || 50;
+            this.height = height || 50;
+            this.ele = null;
+        },
+        insert:function(where){
+            console.log(this)
+            if(this.ele){
+                this.ele.style.width = this.width + 'px';
+                this.ele.style.height = this.height + 'px';
+                where.appendChild(this.ele)
+            }
+        }
+    }
+    var Button = Object.create(Widget);
+    Button.setup = function(width,height,label){
+        this.init(width,height);
+        this.label = label || 'Default';
+        this.ele = document.createElement('button');
+        this.ele.innerHTML = this.label
+    };
+    Button.build = function(where){
+        var _this = this;
+        this.insert(where);
+        this.ele.onclick = function(){
+            _this.onClick.call(_this)
+        }
+    };
+    Button.onClick = function(){
+        console.log(`Button ${this.label} clicked!`)
+    };
+    document.addEventListener('DOMContentLoaded',function(){
+        var body = document.body;
+        var btn1 = Object.create(Button);
+        btn1.setup(125,30,'hello');
+
+        var btn2 = Object.create(Button);
+        btn2.setup(150,40,'world');
+
+        btn1.build(body);
+        btn2.build(body);
+    },false)
+</script>
+</html>

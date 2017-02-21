@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        *{
+            padding:0;
+            margin:0;
+        }
+        .em{
+            padding:20px;
+            width:800px;
+            height:800px;
+            border:10px solid red;
+            background-color:yellow;
+            background-image:url("./haa.png"),url('./webpack.jpg');
+            background-repeat: no-repeat;
+            background-position: 40px 40px;
+            /*
+            background-origin属性规定background-position属性相对于什么位置来定位
+            border-box  相对于外边框,padding-box    相对于内边框,content-box   相对于padding内部，即内容部分
+            默认为padding-box
+            */
+            /*background-origin:content-box;*/
+
+            /*
+            background-clip属性规定背景的绘制区域
+            border-box,padding-box,content-box
+            */
+            /*background-clip: content-box;*/
+
+            /*
+            background-attachment属性规定背景是否跟随屏幕一起滚动
+            fixed:表示背景位置固定，当盒子滚动时，背景位置固定，类似于position:fixed;当使用该属性的时候，background-position默认会根据外边框定位，此时background-origin失效
+            scroll:默认值,表示背景跟随盒子一起滚动
+
+            */
+            background-attachment: fixed;
+            /*
+            background-blend-mode属性表示背景的混合模式。可以是背景图片见的混合，也可以是背景图片和背景色的混合。只需要同时添加多张背景图片，然后再指定混合模式就可以
+            mix-blend-mode: normal;          //正常
+            mix-blend-mode: multiply;        //正片叠底
+            mix-blend-mode: screen;          //滤色
+            mix-blend-mode: overlay;         //叠加
+            mix-blend-mode: darken;          //变暗
+            mix-blend-mode: lighten;         //变亮
+            mix-blend-mode: color-dodge;     //颜色减淡
+            mix-blend-mode: color-burn;      //颜色加深
+            mix-blend-mode: hard-light;      //强光
+            mix-blend-mode: soft-light;      //柔光
+            mix-blend-mode: difference;      //差值
+            mix-blend-mode: exclusion;       //排除
+            mix-blend-mode: hue;             //色相
+            mix-blend-mode: saturation;      //饱和度
+            mix-blend-mode: color;           //颜色
+            mix-blend-mode: luminosity;      //亮度
+
+            mix-blend-mode: initial;         //初始
+            mix-blend-mode: inherit;         //继承
+            mix-blend-mode: unset;           //复原
+
+            */
+
+            background-blend-mode: hard-light;
+
+            /*
+            backface-visibility属性只是否隐藏被旋转的元素的背面
+            */
+
+            backface-visibility: hidden;
+        }
+    </style>
+</head>
+<body>
+<div class="em"></div>
+</body>
+</html>

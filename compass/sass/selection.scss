@@ -1,0 +1,13 @@
+/*重点，必须这样引入，否则查找不到selection mixin*/
+@import "compass/css3/selection";
+*{
+  @include selection(red,#fff)
+}
+
+.em1 {
+  background: yellow;
+  color:red
+}
+.em2{
+  @include selection(green,#fff)
+}

@@ -1,0 +1,4 @@
+@import "compass";
+a{
+  @include link-colors(blue,red,yellow,gray,green)
+}

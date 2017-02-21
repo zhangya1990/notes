@@ -1,0 +1,15 @@
+@import "compass/css3";
+
+div{
+  border:1px solid #ccc;
+}
+.target{
+  width:100px;
+  height:100px;
+  @include flow-into('target')
+}
+.content1,.content2{
+  width:50px;
+  height:50px;
+  @include flow-from('target')
+}

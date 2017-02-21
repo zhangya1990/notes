@@ -1,0 +1,100 @@
+$blue: #1875e7;
+$side: left;
+$m: 20;
+div {
+  margin: (14px/2);
+  color: $blue;
+  border-#{$side}: 1px solid #ccc;
+  h1 {
+    width: 20px;
+    height: 40px;
+    border: {
+      color: $blue;
+    }
+  }
+  a {
+    &:hover {
+      color: #fff;
+    }
+  }
+}
+
+.class1 {
+  border: 1px solid #000;
+}
+
+@mixin left($value:10px) {
+  float: left;
+  margin-right: $value;
+}
+
+.class2 {
+  @extend .class1;
+  @include left(20px)
+}
+
+p {
+  @if (1+1==2) {
+    border: 1px solid #999;
+  } @else {
+    border: 2px dashed #000
+  }
+
+}
+
+$types: 4;
+$type-width: 20px;
+
+@while $types > 0 {
+  .while-#{$types} {
+    width: $type-width + $types;
+  }
+  $types: $types - 1;
+}
+
+@while $m>0 {
+  .item-#{$m} {
+    width: (2px*$m);
+  }
+  $m: $m - 2;
+}
+
+@function getWidth($width:10px){
+  @return $width * 2
+}
+#sideBar{
+  width:getWidth(20px)
+}
+%com{
+  width:20px;
+  height:20px;
+}
+
+.com{
+  @extend %com
+}
+@mixin boxShadow($boxshadows...){
+  box-shadow: $boxshadows;
+}
+.box{
+  @include boxShadow(1px 1px 1px #000,2px 6px 10px #999)
+}
+
+//@content
+@mixin apply-to-iphone5{
+  @media only screen and (min-device-width: 320px) and (max-device-width:568px){
+    @content
+  }
+}
+@include apply-to-iphone5{
+  #logo{
+    background-image: url(/logo@2x.gif);
+  }
+}
+
+//@each
+@each $witch in a,b,c,d{
+  .#{$witch}-icon{
+    background-image: url('./#{$witch}.gif');
+  }
+}

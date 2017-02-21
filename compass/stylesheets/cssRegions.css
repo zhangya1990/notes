@@ -1,0 +1,19 @@
+div {
+    border: 1px solid #ccc
+}
+
+.target {
+    width: 100px;
+    height: 100px;
+    -ms-flow-into: target;
+    -webkit-flow-into: target;
+    flow-into: target
+}
+
+.content1, .content2 {
+    width: 50px;
+    height: 50px;
+    -ms-flow-from: target;
+    -webkit-flow-from: target;
+    flow-from: target
+}

@@ -1,0 +1,10 @@
+@import "compass/css3";
+
+.em{
+  width:100px;
+  height:100px;
+  background: red;
+  padding:20px;
+  border:10px solid yellow;
+  @include box-sizing(padding-box)
+}

@@ -1,0 +1,18 @@
+@import "compass/typography";
+
+.em1 {
+  @include hover-link
+}
+
+.em2 {
+  //normal
+  //hover
+  //active
+  //visited
+  //focus
+  @include link-colors(#ccc, red, green, blue, yellow)
+}
+
+.em3 {
+  @include unstyled-link
+}

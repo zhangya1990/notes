@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>中介者模式购买商品</title>
+</head>
+<body>
+    选择颜色:
+    <select id="colorSelect">
+        <option value="red">红色</option>
+        <option value="blue">蓝色</option>
+    </select>
+    选择内存:
+    <select id="memorySelect">
+        <option value="32G">32G</option>
+        <option value="16G">16G</option>
+    </select>
+    输入购买数量: <input type="text" id="numberInput"><br>
+
+    您选择了颜色: <div id="colorInfo"></div><br>
+    您选择了内存: <div id="memoryInfo"></div><br>
+    您选择了数量: <div id="numberInfo"></div><br>
+
+    <button id="nextBtn" disabled>请选择手机颜色和购买数量</button>
+</body>
+
+<script>
+    var colorSelect = document.getElementById('colorSelect'),
+        numberInput = document.getElementById('numberInput'),
+        memorySelect = document.getElementById('memorySelect');
+    var goods = {
+        'red|32G':3,
+        'red|64G':0,
+        'blue|32G':1,
+        'blue|64G':6
+    };
+    var mediator = (function(){
+
+        var colorInfo = document.getElementById('colorInfo'),
+            numberInfo = document.getElementById('numberInfo'),
+            memoryInfo = document.getElementById('memoryInfo'),
+            nextBtn = document.getElementById('nextBtn');
+
+        return {
+            changed:function(obj){
+                var color = colorSelect.value,
+                    memory = memorySelect.value,
+                    number = numberInput.value,
+                    stock = goods[color+'|'+memory];
+
+                if(obj === colorSelect){
+                    colorInfo.innerHTML = color;
+                }else if(obj === memorySelect){
+                    memoryInfo.innerHTML = memory;
+                }else if(obj = numberInput){
+                    numberInfo.innerHTML = number;
+                }
+
+                if(!color){
+                    nextBtn.disabled = true;
+                    nextBtn.innerHTML = '请选择手机颜色';
+                    return;
+                }
+                if(!memory){
+                    nextBtn.disabled = true;
+                    nextBtn.innerHTML = '请选择内存大小';
+                    return;
+                }
+                if(!number || ((number-0 | 0) !== number-0)){
+                    nextBtn.disabled = true;
+                    nextBtn.innerHTML = '请输入正确的购买数量';
+                    return;
+                }
+                if(number>stock){
+                    nextBtn.disabled = true;
+                    nextBtn.innerHTML = '库存不足';
+                    return;
+                }
+                nextBtn.disabled = false;
+                nextBtn.innerHTML = '放入购物车'
+            }
+        }
+    })();
+
+    colorSelect.onchange = function(){
+        mediator.changed(this);
+    };
+    memorySelect.onchange = function(){
+        mediator.changed(this);
+    };
+    numberInput.oninput = function(){
+        mediator.changed(this);
+    };
+</script>
+</html>
