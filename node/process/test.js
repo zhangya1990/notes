@@ -13,5 +13,7 @@ process.on('message',(msg)=>{
         default:
             sendmsg = 'jiushigan'
     }
+    console.log(process.argv)
     process.send(sendmsg)
+    process.exit(0);
 });

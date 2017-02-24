@@ -59,12 +59,13 @@ let options = {
     encoding:'utf8'
 };
 function mkChild(){
-    let child = child_Process.fork('./test.js',[],options);
+    let child = child_Process.fork('./test.js',['wagaga'],options);
     child.on('message',(msg)=>{
         console.log(`served:${msg}`)
     });
     child.on('exit',(code)=>{
         console.log(`${child} exit with code ${code}`)
+        // console.log(child)
     });
     return child
 }
