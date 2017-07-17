@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .title{
+            width:100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div class="title"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+    const title = document.querySelector('.title');
+    const observable = Rx.Observable.fromEventPattern(add,remove);
+    let subscription = observable.subscribe(x=>console.log(x));
+    let i = 0
+    function add() {
+        title.addEventListener('click',handler,false)
+    }
+    function remove(){
+        title.removeEventListener('click',handler,false)
+    }
+    function handler(){
+        i++;
+        console.log(i)
+        if(i === 5){
+            subscription.unsubscribe();
+        }
+    }
+
+</script>
+</html>

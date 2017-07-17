@@ -44,7 +44,7 @@ let server = http.createServer((request,response)=>{
     let filePath = null;
     if(request.url == '/'){
         filePath = 'public/index.html';
-    }else{
+    }else if(request.url.indexOf('socket.on') === -1){
         filePath = 'public'+request.url;
     }
     let absPath = './'+filePath;

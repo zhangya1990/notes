@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .title{
+            width: 100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div class="title"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+    let title = document.querySelector('.title');
+    let clicks = Rx.Observable.fromEvent(title,'click').map(e=>e.clientX);
+    let countClicks = clicks.bufferCount(3);
+    countClicks.subscribe(x=>console.log(x));
+</script>
+</html>

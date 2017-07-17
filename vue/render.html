@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app">
+
+</div>
+</body>
+<script src="vue.js"></script>
+<script>
+    new Vue({
+        el:'#app',
+        data(){
+            return {
+                value:'hello world'
+            }
+        },
+        render(h){
+            let self = this;
+            return h('div',[
+                h( 'input',{
+                    domProps:{
+                        id:'input',
+                        value:self.value
+                    },
+                    on:{
+                        input(event){
+                            self.value = event.target.value
+                        }
+                    }
+                }),
+                h('p',self.value)
+            ])
+
+        }
+    })
+</script>
+</html>

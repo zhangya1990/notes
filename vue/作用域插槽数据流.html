@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app">
+    <parent>
+
+    </parent>
+</div>
+
+<script src="vue.js"></script>
+<script>
+    let Child = Vue.extend({
+        template:`<div>
+                    <span>come on</span>
+                    <hr>
+                    <span>{{text}}</span>
+                    <slot name="lala" text="woqu"></slot>
+                    </div>`,
+        props:{
+            text:{
+                type:String,
+                required:true
+            }
+        },
+    });
+    let Parent = Vue.component('parent',{
+        data(){
+            return {
+                textContent:'hello'
+            }
+        },
+        template:`<div><child :text="textContent">
+                <template slot="lala" scope="props">
+                    <h2>what are you doing</h2>
+                    <span>{{textContent}}</span>
+                </template>
+            </child></div>`,
+        components:{
+            Child
+        }
+    });
+    let vm = new Vue({
+        el:'#app'
+    })
+</script>
+
+<script>
+    //数据流以及data props说明
+    //挂载在当前组件元素上的属性均为该组件的props，当前组件的模板中的变量均为该组件的data。如果组件模板当中包含作用域插槽，作用域插槽所对应的子组件的模板中slot元素的属性可以当做是子组件的属性，该属性如果是动态绑定，（:text = "name"）绑定的值处于子组件的作用域中，所以是子组件的data，不同于直接在子组件元素上动态绑定数据的数据流(<child :text="name"/> 此时text为子组件的props，name为父组件的data，数据由父组件传递向子组件)
+</script>
+</body>
+</html>

@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app">
+    <parent>
+        <child>
+            <template scope="props" slot="lala">
+                <h2>what are you doing</h2>
+                <span>{{props.text}}</span>
+            </template>
+        </child>
+    </parent>
+</div>
+
+<script src="vue.js"></script>
+<script>
+    let Child = Vue.extend({
+        template:`<div>
+                    <span>come on</span>
+                    <slot name="lala" :text="textContent"></slot>
+                    </div>`,
+        /*data(){
+            return {
+                textContent:this.$parent.textContent
+            }
+        }*/
+        computed:{
+            textContent(){
+                return this.$parent.textContent
+            }
+        },
+        created(){
+            console.log(9999999)
+        }
+    });
+    let Parent = Vue.component('parent',{
+       data(){
+           return {
+               textContent:'hello'
+           }
+       },
+        template:'<div><slot></slot></div>'
+    });
+    let vm = new Vue({
+        el:'#app',
+        components:{
+            Child
+        }
+    })
+</script>
+
+<script>
+    //在使用作用域插槽的时候，在父级中，具有scope属性的template元素，是作用域插槽的模板，scope的值(props)接受从子组件中传递的prop对象，此时，作用域插槽（即slot元素）上的属性即可代表子组件上的属性
+</script>
+</body>
+</html>

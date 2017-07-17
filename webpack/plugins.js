@@ -5,6 +5,8 @@ const HtmlWebpackPlugin = require('html-webpack-plugin');
 const ExtractTextWebpackPlugin = require('extract-text-webpack-plugin');
 const TransferWebpackPlugin = require('transfer-webpack-plugin');
 const CopyWebpackPlugin = require('copy-webpack-plugin');
+const CompressionPlugin = require('compression-webpack-plugin');
+
 
 //以指定文件为模板创建html文件
 new HtmlWebpackPlugin({
@@ -50,7 +52,7 @@ module.exports = {
     ]
 };
 
-//这两个感觉没什么卵用
+//这两个感觉没什么卵用,然而只是我不知道他们的用法
 //将指定文件夹下的文件复制到指定的目录
 new TransferWebpackPlugin([
     {from: 'www'}
@@ -63,7 +65,7 @@ new CopyWebpackPlugin([
 
 //内置插件
 
-//为组件分配id，通过这个插件webpack可以分析和优先考虑使用最多的模块，并未他们分配最小的id
+//为组件分配id，通过这个插件webpack可以分析和优先考虑使用最多的模块，并给他们分配最小的id
 new webpack.optimize.OccurenceOrderPlugin();
 
 //压缩混淆js代码
@@ -75,6 +77,7 @@ new webpack.optimize.UglifyJsPlugin({
     mangle: true || {//通过设置except数组来防止变量被更改
         except: ['$', 'exports', 'require']
     },
+    comments:false,//去除注释
     compress: {//去除警告部分
         warning: false
     }
@@ -117,7 +120,6 @@ module.exports = {
 //自动补全css前缀
 const autoprefixer = require('autoprefixer');
 module.exports = {
-    //其他配置这里就不写了
 
     module: {
         loaders: [
@@ -133,4 +135,47 @@ module.exports = {
             browsers: ['last 3 versions']
         })
     ]
+};
+
+//生成bundle.js.gz 代替生成bundle.js
+new CompressionPlugin({
+    asset: "[path].gz[query]",//The target asset name. [file] is replaced with the original asset. [path] is replaced with the path of the original asset and [query] with the query. Defaults to "[path].gz[query]"
+    filename:false,//A function(asset) which receives the asset name (after processing asset option) and returns the new asset name. Defaults to false
+    algorithm: "gzip",//Can be a function(buf, callback) or a string. For a string the algorithm is taken from zlib (or zopfli for zopfli). Defaults to "gzip"
+    test: /\.(js|html)$/,//All assets matching this RegExp are processed. Defaults to every asset.
+    threshold: 10240,//Only assets bigger than this size are processed. In bytes. Defaults to 0.
+    minRatio: 0.8,//Only assets that compress better that this ratio are processed. Defaults to 0.8.
+    deleteOriginalAssets: false //Whether to delete the original assets or not. Defaults to false.
+});
+
+//webpack.DllPlugin   webpack.DllReferencePlugin
+// 将常用的库文件打包到dll包中，然后在webpack配置中引用。业务代码的可以像往常一样使用require引入依赖模块，比如require('react'), webpack打包业务代码时会首先查找该模块是否已经包含在dll中了，只有dll中没有该模块时，webpack才将其打包到业务chunk中
+//1、使用DllPlugin将常用的库打包在一起：
+module.exports = {
+    entry: {
+        vendor: ['lodash','react'],
+    },
+    output: {
+        filename: '[name].[chunkhash].js',
+        path: 'build/',
+    },
+    plugins: [new webpack.DllPlugin({
+        name: '[name]_lib',
+        path: './[name]-manifest.json',
+    })]
+};
+//2、在业务代码的webpack配置文件中使用DllReferencePlugin插件引用模块映射文件：vender-menifest.json后，我们可以正常的通过require引入依赖的模块，如果在vender-menifest.json中找到依赖模块的路径映射信息，webpack会直接使用dll包中的该依赖模块，否则将该依赖模块打包到业务chunk中。
+//需要注意的是：dll包的代码是不会执行的，需要在业务代码中通过require显示引入
+module.exports = {
+    entry: {
+        app: ['./app'],
+    },
+    output: {
+        filename: '[name].[chunkhash].js',
+        path: 'build/',
+    },
+    plugins: [new webpack.DllReferencePlugin({
+        context: '.',
+        manifest: require('./vendor-manifest.json'),
+    })]
 };

@@ -1,0 +1,30 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app">
+    <fo></fo>
+    <mo></mo>
+</div>
+<script src="../vue.js"></script>
+<script>
+    const Fo = {
+        template:'<div>hello world</div>'
+    };
+    const Mo = (r)=>{
+        setTimeout(()=>{
+            r({template:'<h1>hello world</h1>'})
+        },2000)
+    };
+    new Vue({
+        components:{
+            Fo,
+            Mo
+        }
+    }).$mount('#app');
+</script>
+</body>
+</html>

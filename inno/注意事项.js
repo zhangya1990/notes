@@ -20,3 +20,8 @@
 //Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: unchecked; OnlyBelowVersion: 0,6.1
 //修改为
 //Name: "desktopicon"; Description: "{cm:CreateDesktopIcon}"; GroupDescription: "{cm:AdditionalIcons}"; Flags: checkablealone; OnlyBelowVersion: 0,8.1
+
+
+//[Setup]: DefaultDirName
+// 这是个必需的关键字，该值是默认的目录名称，用于“选择目录页”向导。通常它有一个目录常量前缀。
+// 如果 UsePreviousAppDir 是 yes （默认值）并且安装程序发现已经安装了一个相同应用程序的早期版本，它将用先前选择的目录代替默认的目录名称。 将UsePreviousAppDir设置为no，再次安装时不会查询注册表，可重新选择安装路径。

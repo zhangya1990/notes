@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .title{
+            width: 100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div class="title"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+   /* params:
+        arg1: **必须**、bufferTimeSpan设置发射值的时间间隔
+        arg2: 可选、设置打开缓存区和发射值的时间间隔
+        arg2: 可选、设置缓存区长度
+        scheduler: 可选*/
+   //当有一个参数的时候，表示发射值的时间间隔
+   //当有两个参数的时候，参数一表示缓存区开放的时间，参数二表示发射值的时间间隔
+   //当有三个参数的时候，参数一表示缓存区开放的时间，参数二表示发射值的时间间隔,参数三表示缓存区的长度
+    let title = document.querySelector('.title');
+    let clicks = Rx.Observable.fromEvent(title,'click').map(e=>e.clientX);
+    let countClicks = clicks.bufferTime(1000,1000,2);
+    countClicks.subscribe(x=>console.log(x));
+</script>
+</html>

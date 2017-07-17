@@ -1,0 +1,32 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .title{
+            width:100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div class="title"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+    const title = document.querySelector('.title');
+   /* const observable = Rx.Observable.fromEvent(title,'click',(e)=>{
+        return {
+            x:e.clientX,
+            y:e.clientY
+        }
+    });*/
+    const observable = Rx.Observable.fromEvent(title,'click').map(e=>{return{
+        x:e.clientX,
+        y:e.clientY
+    }})
+    observable.subscribe(x=>console.log(x))
+</script>
+</html>

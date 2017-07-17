@@ -15,4 +15,4 @@
 
 
 //e.m.
-// electron-packager ./Happy --out=./dist/Happy --overwrite --icon=./logo.ico --platform=win32 --arch=x64 --electronVersion=1.2.8 快乐码字
+// electron-packager ./Happy --out=./dist/Happy --overwrite --icon=./logo.ico --platform=win32 --arch=x64 --electronVersion=1.6.2 快乐码字

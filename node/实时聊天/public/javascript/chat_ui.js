@@ -7,7 +7,7 @@ function divSystemContentElement(message){
 }
 
 //处理用户输入
-function processUserInput(chatApp,socket){
+function processUserInput(chatApp){
     let message = $('#send-message').val();
     let systemMessage;
     if(message.charAt(0) === '/'){
@@ -23,7 +23,7 @@ function processUserInput(chatApp,socket){
 }
 
 //初始化客户端socket.io事件
-let socket = io.connect();
+let socket = io('http://localhost:3000');
 $(document).ready(function(){
     let chatApp = new Chat(socket);
     socket.on('nameResult',(result)=>{
@@ -44,6 +44,7 @@ $(document).ready(function(){
         $('#messages').append(newElement)
     });
     socket.on('rooms',(rooms)=>{
+        console.log(rooms)
         $('#room-list').empty();
         for(let room in rooms){
             room = room.substring(1,room.length);
@@ -56,12 +57,10 @@ $(document).ready(function(){
             $('#send-message').focus();
         })
     });
-    setInterval(()=>{
-        socket.emit('rooms');
-    },1000);
     $('#send-message').focus();
     $('#send-form').submit(()=>{
         processUserInput(chatApp,socket);
         return false
     })
+    socket.emit('rooms')
 });

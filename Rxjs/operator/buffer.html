@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        .title{
+            width: 100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div class="title"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+    /*
+    * 缓存原始observable发射的值，直到作为参数的另一个observable发射
+     了值。之后返回一个由这些缓存值组成的数组。
+    * */
+    let title = document.querySelector('.title');
+    let interval = Rx.Observable.interval(1000);
+    let clicks = Rx.Observable.fromEvent(title,'click');
+    let intervalClicks = interval.buffer(clicks);
+    intervalClicks.subscribe(x=>console.log(x))
+</script>
+</html>

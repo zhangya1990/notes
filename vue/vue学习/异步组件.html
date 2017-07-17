@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app">
+    <component :is="currentView"></component>
+</div>
+</body>
+<script src="../vue.js"></script>
+<script>
+    Vue.component('la',(resolve,reject)=>{
+        resolve({
+            data(){
+                return {
+                    go:'hello world'
+                }
+            },
+            template:'<div>{{go}}</div>'
+        })
+    });
+    Vue.component('ho',{
+        template:'<h1>哇嘎嘎</h1>'
+    });
+    new Vue({
+        mounted(){
+            setTimeout(()=>{
+                this.view = 'la'
+            },3000)
+        },
+        data:{
+            view:'ho'
+        },
+        computed:{
+            currentView(){
+                return this.view
+            }
+        }
+    }).$mount('#app')
+</script>
+</html>

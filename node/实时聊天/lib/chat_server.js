@@ -12,7 +12,8 @@ exports.listen = function(server){
         handleRoomJoining(socket);
 
         socket.on('rooms',()=>{
-            socket.emit('rooms',io.sockets.manager.rooms);
+            console.log(io.sockets.adapter)
+            socket.emit('rooms',io.sockets.adapter.rooms);
         });
         handleClientDisconnection(socket,nickNames,namesUsed);
     })
@@ -41,26 +42,25 @@ function joinRoom(socket,room){
         text:nickNames[socket.id] + 'has joined' + room + '.'
     });
     let usersInRoom;
-    console.log(22222222)
     io.sockets.clients((err,clients)=>{
-        console.log(11111)
         usersInRoom = clients;
-        console.log(usersInRoom)
-    });
-    if(usersInRoom.length>1){
-        let usersInRoomSummary = 'Users currently in '+room+': ';
-        for(let index in usersInRoom){
-            let userSocketId = usersInRoom[index].id;
-            if(userSocketId != socket.id){
-                if(index>0){
-                    usersInRoomSummary += ', ';
+        if(usersInRoom.length>1){
+            let usersInRoomSummary = 'Users currently in '+room+': ';
+            console.log(usersInRoom)
+            for(let index in usersInRoom){
+                let userSocketId = usersInRoom[index].id;
+                if(userSocketId != socket.id){
+                    if(index>0){
+                        usersInRoomSummary += ', ';
+                    }
+                    usersInRoomSummary += nickNames[userSocketId];
                 }
-                usersInRoomSummary += nickNames[userSocketId];
             }
+            usersInRoomSummary += '.';
+            socket.emit('message',{text:usersInRoomSummary})
         }
-        usersInRoomSummary += '.';
-        socket.emit('message',{text:usersInRoomSummary})
-    }
+    });
+
 }
 
 //处理昵称变更请求
@@ -82,7 +82,7 @@ function handleNameChangeAttempts(socket,nickNames,namesUsed){
                     success:true,
                     name:name
                 });
-                socket.broadcast.t(currentRoom[socket.id]).emit('message',{
+                socket.broadcast.to(currentRoom[socket.id]).emit('message',{
                     text:previousName+' is now known as '+name+'.'
                 });
             }else{

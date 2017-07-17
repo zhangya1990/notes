@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+    <style>
+        #box{
+            width:100px;
+            height:100px;
+            background: red;
+        }
+    </style>
+</head>
+<body>
+<div id="box"></div>
+</body>
+<script src="./bluebird.js"></script>
+<script src="./jquery.js"></script>
+<script>
+    Promise.config({ cancellation: true})
+    Promise.delay(2000).then(()=>{
+        var aPromise = Promise.fromCallback(function(gotIt){
+            $('#box').animate({
+                width:300,
+                height:300
+            },2000,gotIt)
+        }/*.bind(this,gotIt)*/)
+        function gotIt(){
+            console.log(aPromise)
+            console.log(aPromise.isPending())
+            console.log(aPromise.isFulfilled())
+            console.log(aPromise.isRejected())
+            aPromise._fulfill(3)
+//            aPromise.cancel(6666);
+        }
+        return aPromise
+    }).then(function(b){
+        console.log(b)
+    }).finally((m)=>{
+        console.log(m)
+    })
+</script>
+</html>
