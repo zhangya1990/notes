@@ -28,7 +28,7 @@ function normalizeProps (options) {
 }
 
 //directives中如果当前的directive值为一个函数，默认将改函数绑定为bind和update钩子函数
-function normalizeDirectives (options: Object) {
+function normalizeDirectives (options) {
     const dirs = options.directives
     if (dirs) {
         for (const key in dirs) {

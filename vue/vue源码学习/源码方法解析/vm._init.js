@@ -52,6 +52,7 @@ Vue.prototype._init = function (options) {
     callHook(vm, 'created')
 
     if (vm.$options.el) {
+        //$mount方法构建时生成web-runtime.js,调用vm._mount方法
         vm.$mount(vm.$options.el)
     }
 }

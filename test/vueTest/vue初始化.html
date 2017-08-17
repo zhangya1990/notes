@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Title</title>
+</head>
+<body>
+<div id="app"  @click="which">
+    <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala(go)">
+        {{pro}}
+        {{prpKey}}
+        {{index}}
+        <template></template>
+    </p>
+</div>
+<script src="./vue.js">
+
+</script>
+<script>
+    var vm = new Vue({
+        el:'#app',
+        data:{
+            obj:{
+                name:'zhang',
+                age:11,
+                sex:'nan'
+            }
+        },
+        props:['str'],
+        methods:{
+            which(){
+                console.log(99999999)
+            }
+        }
+    })
+</script>
+</body>
+</html>

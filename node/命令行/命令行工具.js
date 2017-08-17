@@ -13,7 +13,7 @@ process.stdin.on('data',(data)=>{
         enterTheSecretDungeon();
     }
     if(data.slice(0,-1) === 'end'){
-        process.stdin.emit('end');
+        // process.stdin.emit('end');
     }
     //关闭stdi
     // process.stdin.pause();

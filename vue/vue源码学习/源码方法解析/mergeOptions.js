@@ -12,9 +12,11 @@ export function mergeOptions (parent,child,vm){
     //规范化当前注册组件的对象的directives属性（如果值为函数，自动添加bind和update钩子函数）
     normalizeDirectives(child)
 
-    //处理extends属性（??）
+    //处理extends属性
     const extendsFrom = child.extends
     if (extendsFrom) {
+        //extendsFrom是函数，说明child是继承Vue的构造函数，取它的options进行合并，否则直接合并
+        //Vue.options属性在initGlobalApi方法中进行初始化
         parent = typeof extendsFrom === 'function'
             ? mergeOptions(parent, extendsFrom.options, vm)
             : mergeOptions(parent, extendsFrom, vm)
