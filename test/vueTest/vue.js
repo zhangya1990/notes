@@ -1491,6 +1491,7 @@ var initProxy;
     if (hasProxy) {
       // determine which proxy handler to use
       var options = vm.$options;
+      
       var handlers = options.render && options.render._withStripped
         ? getHandler
         : hasHandler;
@@ -1594,6 +1595,8 @@ function createComponent (
   children,
   tag
 ) {
+  console.log(children);
+  console.log(tag)
   if (!Ctor) {
     return
   }
@@ -1790,6 +1793,8 @@ function resolveAsyncComponent (
   baseCtor,
   cb
 ) {
+  console.log(factory);
+  console.log(factory.toString());
   if (factory.requested) {
     // pool callbacks
     factory.pendingCallbacks.push(cb);
@@ -2029,6 +2034,7 @@ function normalizeArrayChildren (children, nestedIndex) {
     c = children[i];
     if (c == null || typeof c === 'boolean') { continue }
     last = res[res.length - 1];
+    console.log(c)
     //  nested
     if (Array.isArray(c)) {
       res.push.apply(res, normalizeArrayChildren(c, ((nestedIndex || '') + "_" + i)));
@@ -2119,6 +2125,7 @@ function _createElement (
   if (typeof tag === 'string') {
     var Ctor;
     ns = config.getTagNamespace(tag);
+    console.log(config.isReservedTag.toString())
     if (config.isReservedTag(tag)) {
       // platform built-in elements
       vnode = new VNode(
@@ -2127,6 +2134,7 @@ function _createElement (
       );
     } else if ((Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
+      console.log(Ctor)
       vnode = createComponent(Ctor, data, context, children, tag);
     } else {
       // unknown or unlisted namespaced elements
@@ -2136,6 +2144,7 @@ function _createElement (
         tag, data, children,
         undefined, undefined, context
       );
+      console.log(vnode)
     }
   } else {
     // direct component options / constructor
@@ -2216,6 +2225,8 @@ function renderMixin (Vue) {
     vm.$vnode = _parentVnode;
     // render self
     var vnode;
+    console.log(vm._renderProxy);
+    console.log(render.toString())
     try {
       vnode = render.call(vm._renderProxy, vm.$createElement);
     } catch (e) {
@@ -2623,6 +2634,7 @@ function lifecycleMixin (Vue) {
   };
 
   Vue.prototype._update = function (vnode, hydrating) {
+    console.log(vnode)
     var vm = this;
     if (vm._isMounted) {
       callHook(vm, 'beforeUpdate');
@@ -4119,6 +4131,7 @@ function createPatchFunction (backend) {
     var data = vnode.data;
     var children = vnode.children;
     var tag = vnode.tag;
+    console.log(vnode.ns)
     if (isDef(tag)) {
       {
         if (data && data.pre) {
@@ -4600,6 +4613,9 @@ function createPatchFunction (backend) {
         // replacing existing element
         var oldElm = oldVnode.elm;
         var parentElm$1 = nodeOps.parentNode(oldElm);
+        console.log(insertedVnodeQueue);
+        console.log(parentElm$1)
+        console.log( nodeOps.nextSibling(oldElm))
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -7113,6 +7129,7 @@ function parse (
       }
     }
   });
+  console.log(root)
   return root
 }
 
@@ -7285,20 +7302,23 @@ function processAttrs (el) {
   for (i = 0, l = list.length; i < l; i++) {
     name = rawName = list[i].name;
     value = list[i].value;
+    //属性是vue指令 v- | @ | :  开头
     if (dirRE.test(name)) {
       // mark element as dynamic
       el.hasBindings = true;
-      // modifiers
+      // modifiers  {native:true,stop:true}
       modifiers = parseModifiers(name);
       if (modifiers) {
+        //去掉修饰符  @click.stop.prevent => @click
         name = name.replace(modifierRE, '');
       }
-      if (bindRE.test(name)) { // v-bind
+      if (bindRE.test(name)) { // v-bind绑定的属性，根据修饰符格式化name和value属性
         name = name.replace(bindRE, '');
         value = parseFilters(value);
         isProp = false;
         if (modifiers) {
           if (modifiers.prop) {
+            //修饰符中prop = true，isProp属性为true，说明原生dom属性
             isProp = true;
             name = camelize(name);
             if (name === 'innerHtml') { name = 'innerHTML'; }
@@ -7307,21 +7327,24 @@ function processAttrs (el) {
             name = camelize(name);
           }
         }
+        
+        //el.props数组中添加原生dom属性，el.attrs数组中添加自定义属性
         if (isProp || platformMustUseProp(el.tag, el.attrsMap.type, name)) {
           addProp(el, name, value);
         } else {
           addAttr(el, name, value);
         }
-      } else if (onRE.test(name)) { // v-on
+      } else if (onRE.test(name)) { // v-on绑定的属性
         name = name.replace(onRE, '');
         addHandler(el, name, value, modifiers);
-      } else { // normal directives
+      } else { // normal directives  //解析普通指令  v-  开头
         name = name.replace(dirRE, '');
-        // parse arg
+        // parse arg  //解析指令参数
         var argMatch = name.match(argRE);
         if (argMatch && (arg = argMatch[1])) {
           name = name.slice(0, -(arg.length + 1));
         }
+        //将解析完的指令添加到 el.directives数组中
         addDirective(el, name, rawName, value, arg, modifiers);
         if ("development" !== 'production' && name === 'model') {
           checkForAliasModel(el, value);
@@ -7329,6 +7352,7 @@ function processAttrs (el) {
       }
     } else {
       // literal attribute
+      //普通属性(非vue指令)
       {
         var expression = parseText(value, delimiters);
         if (expression) {
@@ -7357,6 +7381,7 @@ function checkInFor (el) {
 }
 
 function parseModifiers (name) {
+  //  /\.[^.]+/g
   var match = name.match(modifierRE);
   if (match) {
     var ret = {};

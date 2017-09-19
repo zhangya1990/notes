@@ -190,6 +190,7 @@ function parse (
         // removing structural attributes
         element.plain = !element.key && !attrs.length;
 
+        //解析标签中的ref,:ref,v-bind:ref属性，如果存在设置    el.ref = ref属性表达式  el.refInFor = checkInFor(el); 当前标签或祖级元素再for循环中，为true，否则为false
         processRef(element);
 
         //解析slot，如果标签是slot标签，并且是具名slot（标签中包含name属性）,不能添加key属性，由于slot中可能会包含多个元素，只能给包裹元素添加key,如果标签中存在slot属性，设置el.slotTarget = slot的属性值 || default
@@ -203,6 +204,8 @@ function parse (
         for (var i$1 = 0; i$1 < transforms.length; i$1++) {
           transforms[i$1](element, options);
         }
+
+        //解析attrlists数组中的属性
         processAttrs(element);
       }
 
@@ -228,6 +231,7 @@ function parse (
       // tree management
       if (!root) {
         root = element;
+        //根元素不能是slot或者template元素,并且根元素中不能包含v-for指令
         checkRootConstraints(root);
       } else if (!stack.length) {
         // allow root elements with v-if, v-else-if and v-else
@@ -258,6 +262,7 @@ function parse (
           element.parent = currentParent;
         }
       }
+      //如果不是一元标签，将element添加进栈
       if (!unary) {
         currentParent = element;
         stack.push(element);
@@ -311,6 +316,7 @@ function parse (
         : preserveWhitespace && children.length ? ' ' : '';
       if (text) {
         var expression;
+        //如果包含字符模板，解析模板并添加到children中，type为2
         if (!inVPre && text !== ' ' && (expression = parseText(text, delimiters))) {
           children.push({
             type: 2,
@@ -318,6 +324,7 @@ function parse (
             text: text
           });
         } else if (text !== ' ' || children[children.length - 1].text !== ' ') {
+          //纯文本子节点
           currentParent.children.push({
             type: 3,
             text: text
@@ -327,4 +334,110 @@ function parse (
     }
   });
   return root
+}
+
+
+function processAttrs (el) {
+  var list = el.attrsList;
+  var i, l, name, rawName, value, arg, modifiers, isProp;
+  for (i = 0, l = list.length; i < l; i++) {
+    name = rawName = list[i].name;
+    value = list[i].value;
+    //属性是vue指令 v- | @ | :  开头
+    if (dirRE.test(name)) {
+      // mark element as dynamic
+      el.hasBindings = true;
+      // modifiers  {native:true,stop:true}
+      modifiers = parseModifiers(name);
+      if (modifiers) {
+        //去掉修饰符  @click.stop.prevent => @click
+        name = name.replace(modifierRE, '');
+      }
+      if (bindRE.test(name)) { // v-bind绑定的属性，根据修饰符格式化name和value属性
+        name = name.replace(bindRE, '');
+        value = parseFilters(value);
+        isProp = false;
+        if (modifiers) {
+          if (modifiers.prop) {
+            //修饰符中prop = true，isProp属性为true，说明原生dom属性
+            isProp = true;
+            name = camelize(name);
+            if (name === 'innerHtml') { name = 'innerHTML'; }
+          }
+          if (modifiers.camel) {
+            name = camelize(name);
+          }
+        }
+        
+        //el.props数组中添加原生dom属性，el.attrs数组中添加自定义属性
+        if (isProp || platformMustUseProp(el.tag, el.attrsMap.type, name)) {
+          addProp(el, name, value);
+        } else {
+          addAttr(el, name, value);
+        }
+      } else if (onRE.test(name)) { // v-on绑定的属性
+        name = name.replace(onRE, '');
+        addHandler(el, name, value, modifiers);
+      } else { // normal directives  //解析普通指令  v-  开头
+        name = name.replace(dirRE, '');
+        // parse arg  //解析指令参数
+        var argMatch = name.match(argRE);
+        if (argMatch && (arg = argMatch[1])) {
+          name = name.slice(0, -(arg.length + 1));
+        }
+        //将解析完的指令添加到 el.directives数组中
+        addDirective(el, name, rawName, value, arg, modifiers);
+        if ("development" !== 'production' && name === 'model') {
+          checkForAliasModel(el, value);
+        }
+      }
+    } else {
+      // literal attribute
+      //普通属性(非vue指令)
+      {
+        var expression = parseText(value, delimiters);
+        if (expression) {
+          warn$1(
+            name + "=\"" + value + "\": " +
+            'Interpolation inside attributes has been removed. ' +
+            'Use v-bind or the colon shorthand instead. For example, ' +
+            'instead of <div id="{{ val }}">, use <div :id="val">.'
+          );
+        }
+      }
+      addAttr(el, name, JSON.stringify(value));
+    }
+  }
+}
+
+//解析text内容
+function parseText (
+  text,
+  delimiters
+) {
+  var tagRE = delimiters ? buildRegex(delimiters) : defaultTagRE;
+  if (!tagRE.test(text)) {
+    return
+  }
+  var tokens = [];
+  var lastIndex = tagRE.lastIndex = 0;
+  var match, index;
+  while ((match = tagRE.exec(text))) {
+    index = match.index;
+    //将纯文本添加进token中
+    if (index > lastIndex) {
+      tokens.push(JSON.stringify(text.slice(lastIndex, index)));
+    }
+
+    //解析模板内容,包含过滤器解析过滤器,添加进token中
+    var exp = parseFilters(match[1].trim());
+    tokens.push(("_s(" + exp + ")"));
+    lastIndex = index + match[0].length;
+  }
+  //将最后剩余的纯文本添加进token中
+  if (lastIndex < text.length) {
+    tokens.push(JSON.stringify(text.slice(lastIndex)));
+  }
+  //将所有解析完的结果拼成以加号拼接的字符串返回
+  return tokens.join('+')
 }

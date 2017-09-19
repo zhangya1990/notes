@@ -11,7 +11,7 @@ export function parseHTML (html, options) {
         if (!lastTag || !isPlainTextElement(lastTag)) {
             let textEnd = html.indexOf('<')
             if (textEnd === 0) {
-                // 如果包含注释，删掉注释部分继续解析
+                // 如果以注释开头，删掉注释部分继续解析
                 if (comment.test(html)) {
                     const commentEnd = html.indexOf('-->')
 
@@ -21,7 +21,7 @@ export function parseHTML (html, options) {
                     }
                 }
 
-                //如果包含条件注释，删掉条件注释部分
+                //如果以条件注释开头，删掉条件注释部分继续解析
                 // http://en.wikipedia.org/wiki/Conditional_comment#Downlevel-revealed_conditional_comment
                 if (conditionalComment.test(html)) {
                     const conditionalEnd = html.indexOf(']>')
@@ -32,7 +32,7 @@ export function parseHTML (html, options) {
                     }
                 }
 
-                //如果包含Doctype，删掉
+                //如果包含Doctype，删掉继续解析
                 // Doctype:
                 const doctypeMatch = html.match(doctype)
                 if (doctypeMatch) {
@@ -40,7 +40,7 @@ export function parseHTML (html, options) {
                     continue
                 }
 
-                //如果是闭合标签开头，删掉闭合标签，并对标签做相应的处理
+                //如果是闭合标签开头，对标签做相应的处理，继续解析
                 // End tag:
                 const endTagMatch = html.match(endTag)
                 if (endTagMatch) {
@@ -50,7 +50,7 @@ export function parseHTML (html, options) {
                     continue
                 }
 
-                //解析起始标签,并添加到stack中，lastTag = tagName，如果options中包含start函数，执行
+                //如果以起始标签开头，解析起始标签,并添加到stack中，lastTag = tagName，如果options中包含start函数，执行
                 // Start tag:
                 const startTagMatch = parseStartTag()
                 if (startTagMatch) {
@@ -134,7 +134,7 @@ export function parseHTML (html, options) {
             }
             advance(start[0].length)
             let end, attr
-            //对起始标签进行处理，返回一个match对象，{tagName：string,attrs:[所有属性],start：标签起始索引,end：标签结束索引，unarySlash：\|''}
+            //对起始标签进行处理，返回一个match对象，{tagName：string,attrs:[所有属性,包括v-bind:xxx等],start：标签起始索引,end：标签结束索引，unarySlash：\|''}
             while (!(end = html.match(startTagClose)) && (attr = html.match(attribute))) {
                 advance(attr[0].length)
                 match.attrs.push(attr)
@@ -161,10 +161,15 @@ export function parseHTML (html, options) {
             }
         }
 
+        //isUnaryTag
+        //makeMap('area,base,br,col,embed,frame,hr,img,input,isindex,keygen,'link,meta,param,source,track,wbr',true);
+        //unary 不是自闭和标签，并且标签名不是html，并且上一次解析的标签不是head标签
+        //unarySlash的值为\|'',!!unarySlash为\，说明为自动闭合标签，unary值为true
         const unary = isUnaryTag(tagName) || tagName === 'html' && lastTag === 'head' || !!unarySlash
 
         const l = match.attrs.length
         const attrs = new Array(l)
+        //解析match.attrs，将数组的每个值解析为对象{name:'属性名包括id,v-bind:class,@click等',value:'值'}
         for (let i = 0; i < l; i++) {
             const args = match.attrs[i]
             // hackish work around FF bug https://bugzilla.mozilla.org/show_bug.cgi?id=369778
@@ -183,6 +188,7 @@ export function parseHTML (html, options) {
             }
         }
 
+        //不是一元标签，将当前解析结果添加进栈，lastTag设置为当前解析的标签
         if (!unary) {
             stack.push({ tag: tagName, lowerCasedTag: tagName.toLowerCase(), attrs: attrs })
             lastTag = tagName
@@ -203,6 +209,7 @@ export function parseHTML (html, options) {
         }
 
         // Find the closest opened tag of the same type
+        //找到最近的起始标签
         if (tagName) {
             for (pos = stack.length - 1; pos >= 0; pos--) {
                 if (stack[pos].lowerCasedTag === lowerCasedTagName) {
