@@ -34,13 +34,18 @@ function createComponent(
   // async component
   if (!Ctor.cid) {
     if (Ctor.resolved) {
+      //异步组件resolve之后，$forceUpdate触发更新，再次触发_render函数，解析模板，生成vnode
       Ctor = Ctor.resolved;
     } else {
+      //异步组件第一次解析
       Ctor = resolveAsyncComponent(Ctor, baseCtor, function () {
         // it's ok to queue this on every render because
         // $forceUpdate is buffered by the scheduler.
+        //异步组件加载之后，强制触发更新
         context.$forceUpdate();
       });
+
+      //Ctor = factory.resolved 为false，说明是异步组件，等待组件resolve之后，自动触发db，调用 context.$forceUpdate()，刷新dom
       if (!Ctor) {
         // return nothing if this is indeed an async component
         // wait for the callback to trigger parent update.
@@ -51,6 +56,7 @@ function createComponent(
 
   // resolve constructor options in case global mixins are applied after
   // component constructor creation
+  // 各种options合并，混合等
   resolveConstructorOptions(Ctor);
 
   data = data || {};
@@ -86,6 +92,7 @@ function createComponent(
     data, undefined, undefined, undefined, context,
     { Ctor: Ctor, propsData: propsData, listeners: listeners, tag: tag, children: children }
   );
+  console.log(vnode)
   return vnode
 }
 
@@ -122,4 +129,54 @@ function createFunctionalComponent (
     }
   }
   return vnode
+}
+
+function resolveAsyncComponent (
+  factory,
+  baseCtor,
+  cb
+) {
+  if (factory.requested) {
+    // pool callbacks
+    factory.pendingCallbacks.push(cb);
+  } else {
+    factory.requested = true;
+    var cbs = factory.pendingCallbacks = [cb];
+    var sync = true;
+
+    var resolve = function (res) {
+      if (isObject(res)) {
+        //根据options选项生成组件的构造函数
+        res = baseCtor.extend(res);
+      }
+      // cache resolved
+      factory.resolved = res;
+      // invoke callbacks only if this is not a synchronous resolve
+      // (async resolves are shimmed as synchronous during SSR)
+      // 触发回调函数执行  vm.$forceUpdate();
+      if (!sync) {
+        for (var i = 0, l = cbs.length; i < l; i++) {
+          cbs[i](res);
+        }
+      }
+    };
+
+    var reject = function (reason) {
+      "development" !== 'production' && warn(
+        "Failed to resolve async component: " + (String(factory)) +
+        (reason ? ("\nReason: " + reason) : '')
+      );
+    };
+
+    var res = factory(resolve, reject);
+
+    // handle promise
+    if (res && typeof res.then === 'function' && !factory.resolved) {
+      res.then(resolve, reject);
+    }
+
+    sync = false;
+    // return in case resolved synchronously
+    return factory.resolved
+  }
 }

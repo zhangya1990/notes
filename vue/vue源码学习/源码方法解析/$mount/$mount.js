@@ -3,7 +3,6 @@ Vue$3.prototype.$mount = function (
     hydrating
 ) {
     el = el && inBrowser ? query(el) : undefined;
-    return false
     return this._mount(el, hydrating)
 };
 

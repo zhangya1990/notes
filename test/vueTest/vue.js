@@ -1667,6 +1667,7 @@ function createComponent (
     data, undefined, undefined, undefined, context,
     { Ctor: Ctor, propsData: propsData, listeners: listeners, tag: tag, children: children }
   );
+  console.log(vnode)
   return vnode
 }
 
@@ -1710,6 +1711,7 @@ function createComponentInstanceForVnode (
   parentElm,
   refElm
 ) {
+  console.log(vnode)
   var vnodeComponentOptions = vnode.componentOptions;
   var options = {
     _isComponent: true,
@@ -1744,7 +1746,11 @@ function init (
       parentElm,
       refElm
     );
+  
     child.$mount(hydrating ? vnode.elm : undefined, hydrating);
+    if(vnode.tag.indexOf('component')>-1){
+      console.warn(child)
+    }
   } else if (vnode.data.keepAlive) {
     // kept-alive components, treat as a patch
     var mountedNode = vnode; // work around flow
@@ -2134,7 +2140,7 @@ function _createElement (
       );
     } else if ((Ctor = resolveAsset(context.$options, 'components', tag))) {
       // component
-      console.log(Ctor)
+      console.log(context.$options)
       vnode = createComponent(Ctor, data, context, children, tag);
     } else {
       // unknown or unlisted namespaced elements
@@ -2648,6 +2654,7 @@ function lifecycleMixin (Vue) {
     // based on the rendering backend used.
     if (!prevVnode) {
       // initial render
+      console.error(vm)
       vm.$el = vm.__patch__(
         vm.$el, vnode, hydrating, false /* removeOnly */,
         vm.$options._parentElm,
@@ -4131,7 +4138,7 @@ function createPatchFunction (backend) {
     var data = vnode.data;
     var children = vnode.children;
     var tag = vnode.tag;
-    console.log(vnode.ns)
+    // console.warn(tag)
     if (isDef(tag)) {
       {
         if (data && data.pre) {
@@ -4181,6 +4188,7 @@ function createPatchFunction (backend) {
     var i = vnode.data;
     if (isDef(i)) {
       var isReactivated = isDef(vnode.componentInstance) && i.keepAlive;
+      console.log(isReactivated)
       if (isDef(i = i.hook) && isDef(i = i.init)) {
         i(vnode, false /* hydrating */, parentElm, refElm);
       }
@@ -4353,6 +4361,8 @@ function createPatchFunction (backend) {
   }
 
   function updateChildren (parentElm, oldCh, newCh, insertedVnodeQueue, removeOnly) {
+    console.warn(oldCh)
+    console.warn(newCh)
     var oldStartIdx = 0;
     var newStartIdx = 0;
     var oldEndIdx = oldCh.length - 1;
@@ -4428,6 +4438,10 @@ function createPatchFunction (backend) {
   }
 
   function patchVnode (oldVnode, vnode, insertedVnodeQueue, removeOnly) {
+    if(vnode.tag === 'vue-component-1-a-command'){
+        console.warn(oldVnode)
+        console.warn(vnode)
+    }
     if (oldVnode === vnode) {
       return
     }
@@ -4613,9 +4627,6 @@ function createPatchFunction (backend) {
         // replacing existing element
         var oldElm = oldVnode.elm;
         var parentElm$1 = nodeOps.parentNode(oldElm);
-        console.log(insertedVnodeQueue);
-        console.log(parentElm$1)
-        console.log( nodeOps.nextSibling(oldElm))
         createElm(
           vnode,
           insertedVnodeQueue,
@@ -4642,6 +4653,7 @@ function createPatchFunction (backend) {
         }
 
         if (parentElm$1 !== null) {
+          console.log(oldVnode);
           removeVnodes(parentElm$1, [oldVnode], 0, 0);
         } else if (isDef(oldVnode.tag)) {
           invokeDestroyHook(oldVnode);

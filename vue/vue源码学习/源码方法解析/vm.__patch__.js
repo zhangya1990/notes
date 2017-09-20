@@ -82,6 +82,7 @@ function createPatchFunction (backend) {
         const data = vnode.data
         const children = vnode.children
         const tag = vnode.tag
+        console.warn(tag)
         if (isDef(tag)) {
             if (process.env.NODE_ENV !== 'production') {
                 if (data && data.pre) {
@@ -368,9 +369,11 @@ function createPatchFunction (backend) {
                 oldEndVnode = oldCh[--oldEndIdx]
                 newStartVnode = newCh[++newStartIdx]
             } else {
+                //根据vnode的key属性操作dom
                 if (isUndef(oldKeyToIdx)) oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
                 idxInOld = isDef(newStartVnode.key) ? oldKeyToIdx[newStartVnode.key] : null
                 if (isUndef(idxInOld)) { // New element
+                    //如果newStartVnode不包含key，或oldChildren中不存在当前key属性，新建dom
                     createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm)
                     newStartVnode = newCh[++newStartIdx]
                 } else {
@@ -383,12 +386,14 @@ function createPatchFunction (backend) {
                         )
                     }
                     if (sameVnode(elmToMove, newStartVnode)) {
+                        //新旧children中都存在当前，并且类似
                         patchVnode(elmToMove, newStartVnode, insertedVnodeQueue)
                         oldCh[idxInOld] = undefined
                         canMove && nodeOps.insertBefore(parentElm, newStartVnode.elm, oldStartVnode.elm)
                         newStartVnode = newCh[++newStartIdx]
                     } else {
                         // same key but different element. treat as new element
+                        //具有相同的key但是是不同的元素，创建新的
                         createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm)
                         newStartVnode = newCh[++newStartIdx]
                     }
@@ -628,7 +633,7 @@ function createPatchFunction (backend) {
                     }
                 }
 
-                //移除旧的vnode
+                //移除旧的vnode,($mount(el)初始化时，会移除掉旧的dom，并根据vnode生成新的dom)
                 if (parentElm !== null) {
                     removeVnodes(parentElm, [oldVnode], 0, 0)
                 } else if (isDef(oldVnode.tag)) {
