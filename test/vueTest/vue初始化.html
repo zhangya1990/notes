@@ -5,8 +5,8 @@
     <title>Title</title>
 </head>
 <body>
-<div id="app"  @click="which">
-    <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala(go)">
+<div id="app"  @click="which" v-showM>
+    <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala()">
         {{pro}}
         {{prpKey}}
         {{index}}
@@ -27,9 +27,22 @@
             }
         },
         props:['str'],
+        directives:{
+            "v-showM":{
+                bind(){
+                    console.log(666)
+                },
+                update(){
+                    console.log(9999)
+                }
+            }
+        },
         methods:{
             which(){
                 console.log(99999999)
+            },
+            lala(){
+                console.log('hahah')
             }
         }
     })
