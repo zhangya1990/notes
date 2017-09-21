@@ -5,7 +5,11 @@
     <title>Title</title>
 </head>
 <body>
-<div id="app"  @click="which" v-showM>
+<div id="app"  @click="which">
+    <self-con></self-con>
+    <a-command>
+        <div class="child">哈哈哈</div>
+    </a-command>
     <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala()">
         {{pro}}
         {{prpKey}}
@@ -17,6 +21,14 @@
 
 </script>
 <script>
+    var selfCon = Vue.component('selfCon',function(resolve,reject){
+        setTimeout(()=>{
+            alert('lalala');
+            resolve({
+                template:`<div>haha<div>`
+            })
+        },2000)
+    });
     var vm = new Vue({
         el:'#app',
         data:{
@@ -35,14 +47,16 @@
                 update(){
                     console.log(9999)
                 }
+            },
+        },
+        components:{
+            aCommand:{
+                template:'<div id="com">我是组件</div>'
             }
         },
         methods:{
             which(){
                 console.log(99999999)
-            },
-            lala(){
-                console.log('hahah')
             }
         }
     })

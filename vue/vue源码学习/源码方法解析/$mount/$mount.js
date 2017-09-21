@@ -1,8 +1,21 @@
+Vue$3.prototype.$mount = function (
+    el,
+    hydrating
+) {
+    el = el && inBrowser ? query(el) : undefined;
+    return this._mount(el, hydrating)
+};
+
+
 const mount = Vue.prototype.$mount
+
+
 Vue.prototype.$mount = function (
     el?: string | Element,
     hydrating?: boolean
 ): Component {
+
+    //标准化el对象为dom元素，且不能为body或html元素
     el = el && query(el)
 
     /* istanbul ignore if */
@@ -15,6 +28,7 @@ Vue.prototype.$mount = function (
 
     const options = this.$options
     // resolve template/el and convert to render function
+    //解析 template/el 并且转化为render函数
     if (!options.render) {
         let template = options.template
         if (template) {
@@ -38,6 +52,7 @@ Vue.prototype.$mount = function (
                 return this
             }
         } else if (el) {
+            //el存在template不存在，将el的outerhtml赋值为template
             template = getOuterHTML(el)
         }
         if (template) {
@@ -46,6 +61,7 @@ Vue.prototype.$mount = function (
                 mark('compile')
             }
 
+            //编译template并生成render函数
             const { render, staticRenderFns } = compileToFunctions(template, {
                 //在处理包含换行符的属性时ie与其他的浏览器表现不一致
                 shouldDecodeNewlines,

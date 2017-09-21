@@ -49,6 +49,7 @@ function createPatchFunction (backend) {
         }
     }
 
+    //创建一个空的顶层vnode
     function emptyNodeAt (elm) {
         return new VNode(nodeOps.tagName(elm).toLowerCase(), {}, [], undefined, elm)
     }
@@ -81,6 +82,7 @@ function createPatchFunction (backend) {
         const data = vnode.data
         const children = vnode.children
         const tag = vnode.tag
+        console.warn(tag)
         if (isDef(tag)) {
             if (process.env.NODE_ENV !== 'production') {
                 if (data && data.pre) {
@@ -100,6 +102,7 @@ function createPatchFunction (backend) {
                     )
                 }
             }
+            //根据tag创建标签
             vnode.elm = vnode.ns
                 ? nodeOps.createElementNS(vnode.ns, tag)
                 : nodeOps.createElement(tag, vnode)
@@ -125,10 +128,13 @@ function createPatchFunction (backend) {
                     insert(parentElm, vnode.elm, refElm)
                 }
             } else {
+                //创建子节点
                 createChildren(vnode, children, insertedVnodeQueue)
+
                 if (isDef(data)) {
                     invokeCreateHooks(vnode, insertedVnodeQueue)
                 }
+                //插入父节点
                 insert(parentElm, vnode.elm, refElm)
             }
 
@@ -231,13 +237,17 @@ function createPatchFunction (backend) {
         return isDef(vnode.tag)
     }
 
+    //解析vnode.data中的钩子
     function invokeCreateHooks (vnode, insertedVnodeQueue) {
+        //依次触发create钩子集合中的回调函数
         for (let i = 0; i < cbs.create.length; ++i) {
             cbs.create[i](emptyNode, vnode)
         }
         i = vnode.data.hook // Reuse variable
         if (isDef(i)) {
+            //如果包含create钩子，触发钩子函数
             if (i.create) i.create(emptyNode, vnode)
+            //如果包含insert钩子，将当前vnode添加进insertedVnodeQueue中，可保证按照插入的顺序依次出发insert钩子
             if (i.insert) insertedVnodeQueue.push(vnode)
         }
     }
@@ -359,9 +369,11 @@ function createPatchFunction (backend) {
                 oldEndVnode = oldCh[--oldEndIdx]
                 newStartVnode = newCh[++newStartIdx]
             } else {
+                //根据vnode的key属性操作dom
                 if (isUndef(oldKeyToIdx)) oldKeyToIdx = createKeyToOldIdx(oldCh, oldStartIdx, oldEndIdx)
                 idxInOld = isDef(newStartVnode.key) ? oldKeyToIdx[newStartVnode.key] : null
                 if (isUndef(idxInOld)) { // New element
+                    //如果newStartVnode不包含key，或oldChildren中不存在当前key属性，新建dom
                     createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm)
                     newStartVnode = newCh[++newStartIdx]
                 } else {
@@ -374,12 +386,14 @@ function createPatchFunction (backend) {
                         )
                     }
                     if (sameVnode(elmToMove, newStartVnode)) {
+                        //新旧children中都存在当前，并且类似
                         patchVnode(elmToMove, newStartVnode, insertedVnodeQueue)
                         oldCh[idxInOld] = undefined
                         canMove && nodeOps.insertBefore(parentElm, newStartVnode.elm, oldStartVnode.elm)
                         newStartVnode = newCh[++newStartIdx]
                     } else {
                         // same key but different element. treat as new element
+                        //具有相同的key但是是不同的元素，创建新的
                         createElm(newStartVnode, insertedVnodeQueue, parentElm, oldStartVnode.elm)
                         newStartVnode = newCh[++newStartIdx]
                     }
@@ -413,6 +427,7 @@ function createPatchFunction (backend) {
         let i
         const data = vnode.data
         const hasData = isDef(data)
+        //依次触发prepatch中的钩子
         if (hasData && isDef(i = data.hook) && isDef(i = i.prepatch)) {
             i(oldVnode, vnode)
         }
@@ -424,19 +439,29 @@ function createPatchFunction (backend) {
             if (isDef(i = data.hook) && isDef(i = i.update)) i(oldVnode, vnode)
         }
         if (isUndef(vnode.text)) {
+            //vnode.text 不存在
             if (isDef(oldCh) && isDef(ch)) {
+                //oldVnode.children和vnode.children都存在，但不相同
                 if (oldCh !== ch) updateChildren(elm, oldCh, ch, insertedVnodeQueue, removeOnly)
             } else if (isDef(ch)) {
+                //oldVnode.children不存在，vnode.children存在
+                //首先在真实dom中移除oldVnode.text
                 if (isDef(oldVnode.text)) nodeOps.setTextContent(elm, '')
+                //将vnode.children依次创建
                 addVnodes(elm, null, ch, 0, ch.length - 1, insertedVnodeQueue)
             } else if (isDef(oldCh)) {
+                //oldVnode.children存在，vnode.children不存在
+                //全部移除
                 removeVnodes(elm, oldCh, 0, oldCh.length - 1)
             } else if (isDef(oldVnode.text)) {
+                //oldVnode.text存在，将text置为空
                 nodeOps.setTextContent(elm, '')
             }
         } else if (oldVnode.text !== vnode.text) {
+            //新旧vnode.text不相同,替换为新
             nodeOps.setTextContent(elm, vnode.text)
         }
+          //依次触发postpatch中的钩子
         if (hasData) {
             if (isDef(i = data.hook) && isDef(i = i.postpatch)) i(oldVnode, vnode)
         }
@@ -573,11 +598,13 @@ function createPatchFunction (backend) {
                     }
                     // either not server-rendered, or hydration failed.
                     // create an empty node and replace it
+                    //创建一个空的vnode
                     oldVnode = emptyNodeAt(oldVnode)
                 }
                 // replacing existing element
                 const oldElm = oldVnode.elm
                 const parentElm = nodeOps.parentNode(oldElm)
+                //创建真正的dom
                 createElm(
                     vnode,
                     insertedVnodeQueue,
@@ -588,6 +615,7 @@ function createPatchFunction (backend) {
                     nodeOps.nextSibling(oldElm)
                 )
 
+                //vnode的祖籍vnode元素修改el属性
                 if (vnode.parent) {
                     // component root element replaced.
                     // update parent placeholder node element, recursively
@@ -596,6 +624,8 @@ function createPatchFunction (backend) {
                         ancestor.elm = vnode.elm
                         ancestor = ancestor.parent
                     }
+
+                    //vnode是一个组件？？？并且包含tag属性
                     if (isPatchable(vnode)) {
                         for (let i = 0; i < cbs.create.length; ++i) {
                             cbs.create[i](emptyNode, vnode.parent)
@@ -603,6 +633,7 @@ function createPatchFunction (backend) {
                     }
                 }
 
+                //移除旧的vnode,($mount(el)初始化时，会移除掉旧的dom，并根据vnode生成新的dom)
                 if (parentElm !== null) {
                     removeVnodes(parentElm, [oldVnode], 0, 0)
                 } else if (isDef(oldVnode.tag)) {
@@ -611,6 +642,7 @@ function createPatchFunction (backend) {
             }
         }
 
+        //依次触发insert钩子
         invokeInsertHook(vnode, insertedVnodeQueue, isInitialPatch)
         return vnode.elm
     }
