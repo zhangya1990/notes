@@ -117,5 +117,5 @@ function Vue (options) {
 
 //3、调用vm.$mount方法完成挂载
 /**
- *  
+ *  详见$mount方法
  */

@@ -24,7 +24,10 @@ Vue.prototype._mount = function (
         }
     }
     callHook(vm, 'beforeMount')
+
+    //生成一个watcher,vm.$forceUpdate()方法，最终调用vm._watcher.get()，调用 vm._update(vm._render(), hydrating);
     vm._watcher = new Watcher(vm, function updateComponent () {
+        //详见_update,_watcher方法
         vm._update(vm._render(), hydrating)
     }, noop)
     hydrating = false

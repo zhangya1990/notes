@@ -2225,11 +2225,7 @@ function renderMixin (Vue) {
     vm.$vnode = _parentVnode;
     // render self
     var vnode;
-<<<<<<< HEAD
         console.log(render.toString())
-=======
-
->>>>>>> 836a0394e6bdd8e5ceb52f17fa729db6d630cb61
     try {
       vnode = render.call(vm._renderProxy, vm.$createElement);
     } catch (e) {
