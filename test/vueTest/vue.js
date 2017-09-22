@@ -2078,6 +2078,7 @@ function createElement (
   normalizationType,
   alwaysNormalize
 ) {
+  console.log(77777777777)
   if (Array.isArray(data) || isPrimitive(data)) {
     normalizationType = children;
     children = data;
@@ -2119,11 +2120,13 @@ function _createElement (
     children = simpleNormalizeChildren(children);
   }
   var vnode, ns;
+  console.log(6666666666666)
   if (typeof tag === 'string') {
     var Ctor;
     ns = config.getTagNamespace(tag);
     if (config.isReservedTag(tag)) {
       // platform built-in elements
+      console.log(66666666666)
       vnode = new VNode(
         config.parsePlatformTagName(tag), data, children,
         undefined, undefined, context
@@ -2135,6 +2138,7 @@ function _createElement (
       // unknown or unlisted namespaced elements
       // check at runtime because it may get assigned a namespace when its
       // parent normalizes children
+    
       vnode = new VNode(
         tag, data, children,
         undefined, undefined, context
@@ -2182,7 +2186,9 @@ function initRender (vm) {
   // so that we get proper render context inside it.
   // args order: tag, data, children, normalizationType, alwaysNormalize
   // internal version is used by render functions compiled from templates
-  vm._c = function (a, b, c, d) { return createElement(vm, a, b, c, d, false); };
+  vm._c = function (a, b, c, d) { 
+    console.log(99999999)
+    return createElement(vm, a, b, c, d, false); };
   // normalization is always applied for the public version, used in
   // user-written render functions.
   vm.$createElement = function (a, b, c, d) { return createElement(vm, a, b, c, d, true); };
@@ -2219,11 +2225,16 @@ function renderMixin (Vue) {
     vm.$vnode = _parentVnode;
     // render self
     var vnode;
+<<<<<<< HEAD
         console.log(render.toString())
+=======
+
+>>>>>>> 836a0394e6bdd8e5ceb52f17fa729db6d630cb61
     try {
       vnode = render.call(vm._renderProxy, vm.$createElement);
     } catch (e) {
       /* istanbul ignore else */
+      console.log(e)
       if (config.errorHandler) {
         config.errorHandler.call(null, e, vm);
       } else {
@@ -2248,6 +2259,7 @@ function renderMixin (Vue) {
     }
     // set parent
     vnode.parent = _parentVnode;
+    console.log(vnode)
     return vnode
   };
 
@@ -2321,6 +2333,7 @@ function renderMixin (Vue) {
     val,
     render
   ) {
+    console.log(val)
     var ret, i, l, keys, key;
     if (Array.isArray(val) || typeof val === 'string') {
       ret = new Array(val.length);
@@ -3136,6 +3149,7 @@ function initState (vm) {
   vm._watchers = [];
   var opts = vm.$options;
   if (opts.props) { initProps(vm, opts.props); }
+ 
   if (opts.methods) { initMethods(vm, opts.methods); }
   if (opts.data) {
     initData(vm);
@@ -7681,6 +7695,11 @@ function generate (
   var code = ast ? genElement(ast) : '_c("div")';
   staticRenderFns = prevStaticRenderFns;
   onceCount = prevOnceCount;
+  console.log(options)
+  console.log(ast)
+  console.log(staticRenderFns)
+  console.log(code)
+  console.log(currentStaticRenderFns)
   return {
     render: ("with(this){return " + code + "}"),
     staticRenderFns: currentStaticRenderFns
@@ -8560,10 +8579,12 @@ Vue$3.prototype.$mount = function (
       }, this);
       var render = ref.render;
       var staticRenderFns = ref.staticRenderFns;
+      console.log(ref)
       options.render = render;
       options.staticRenderFns = staticRenderFns;
     }
   }
+
   return mount.call(this, el, hydrating)
 };
 

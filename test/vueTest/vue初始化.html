@@ -49,6 +49,7 @@
             return curData
         },
         props:['str'],
+<<<<<<< HEAD
         computed:{
             la(){
                 return this.lu + ' wo shi la'
@@ -67,6 +68,17 @@
             // this.$nextTick(()=>{
             //     this.lu = 'wokao'
             // })
+=======
+        directives:{
+            "v-showM":{
+                bind(){
+                    console.log(666)
+                },
+                update(){
+                    console.log(9999)
+                }
+            },
+>>>>>>> 836a0394e6bdd8e5ceb52f17fa729db6d630cb61
         },
         components:{
             aCommand:{
@@ -76,9 +88,6 @@
         methods:{
             which(){
                 console.log(99999999)
-            },
-            lala(){
-                console.log('lala')
             }
         }
     })
