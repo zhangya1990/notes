@@ -26,7 +26,8 @@
    //当有三个参数的时候，参数一表示缓存区开放的时间，参数二表示发射值的时间间隔,参数三表示缓存区的长度
     let title = document.querySelector('.title');
     let clicks = Rx.Observable.fromEvent(title,'click').map(e=>e.clientX);
-    let countClicks = clicks.bufferTime(1000,1000,2);
+    //缓冲一秒钟内的点击次数，并在一秒后发射数据，3s后刷新缓冲时间，及第一次发射完数据两秒后，缓冲接下来一秒内的点击次数，并在缓冲时间到达之后发射数据，如果指定第三个参数，缓冲区的数据达到参数指定长度之后发射数据，缓冲时间及缓冲间隔不受影响，以此循环
+    let countClicks = clicks.bufferTime(1000,3000,2);
     countClicks.subscribe(x=>console.log(x));
 </script>
 </html>

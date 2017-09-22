@@ -1,0 +1,29 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .box{
+            width: 100px;
+            height: 100px;
+            background-color:red;
+        }
+    </style>
+</head>
+<body>
+    <div class="box"></div>
+</body>
+<script src="./Rx.js"></script>
+<script>
+    const box = document.querySelector('.box');
+    const source = Rx.Observable.fromEvent(document,'click');
+    console.log(source)
+    console.log(source.bufferToggle)
+    source.bufferToggle(Rx.Observable.interval(1000),i=>{
+        console.log(i)
+        return i%2 ? Rx.Observable.interval(500) : Rx.Observable.empty()
+    }).subscribe(x=>console.log(x))
+</script>
+</html>

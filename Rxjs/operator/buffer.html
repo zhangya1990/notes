@@ -19,11 +19,12 @@
     /*
     * 缓存原始observable发射的值，直到作为参数的另一个observable发射
      了值。之后返回一个由这些缓存值组成的数组。
+     谁调用buffer方法缓冲谁， - - 这里有点绕
     * */
     let title = document.querySelector('.title');
     let interval = Rx.Observable.interval(1000);
     let clicks = Rx.Observable.fromEvent(title,'click');
-    let intervalClicks = interval.buffer(clicks);
+    let intervalClicks = clicks.buffer(interval);
     intervalClicks.subscribe(x=>console.log(x))
 </script>
 </html>
