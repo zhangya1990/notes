@@ -6,16 +6,18 @@
 </head>
 <body>
 <div id="app"  @click="which">
-    <self-con></self-con>
-    <a-command>
-        <div class="child">哈哈哈</div>
-    </a-command>
-    <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala()">
+    <!-- <self-con></self-con> -->
+    <!-- <a-command>
+        <div class="child">{{la}}</div>
+    </a-command> -->
+    <!-- <p v-for="(pro,prpKey,index) in obj" v-if="index%3==0" :key="lala()">
         {{pro}}
         {{prpKey}}
         {{index}}
         <template></template>
-    </p>
+    </p> -->
+    <p>{{yu}}</p>
+    <div>{{ta}}</div>
 </div>
 <script src="./vue.js">
 
@@ -23,7 +25,7 @@
 <script>
     var selfCon = Vue.component('selfCon',function(resolve,reject){
         setTimeout(()=>{
-            alert('lalala');
+            // alert('lalala');
             resolve({
                 template:`<div>haha<div>`
             })
@@ -31,17 +33,44 @@
     });
     var vm = new Vue({
         el:'#app',
-        data:{
-            obj:{
-                name:'zhang',
-                age:11,
-                sex:'nan'
+        data(){
+            const curData = {
+                obj:{
+                    name:'zhang',
+                    age:11,
+                    sex:'nan'
+                },
+                lu:'kaka',
+                yu:'mama'
             }
+            setTimeout(()=>{
+                curData.lu = 'come on'
+            },3000)
+            return curData
         },
         props:['str'],
+        computed:{
+            la(){
+                return this.lu + ' wo shi la'
+            },
+            ta(){
+                return this.lu + ' shi bu shi ta'
+            }
+        },
+        watch:{
+            lu(newv,oldv){
+                console.warn(newv,oldv)
+                this.yu = newv;
+            }
+        },
+        mounted(){
+            // this.$nextTick(()=>{
+            //     this.lu = 'wokao'
+            // })
+        },
         components:{
             aCommand:{
-                template:'<div id="com">我是组件</div>'
+                template:'<div id="com"><p>我是组件</p><slot/></div>'
             }
         },
         methods:{

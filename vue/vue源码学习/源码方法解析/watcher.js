@@ -97,7 +97,7 @@ export default class Watcher {
     pushTarget(this)
     let value
     const vm = this.vm
-    //value = this.getter.call(vm.vm)相当于调用vm.value，及通过get（）获得obj.value
+    //value = this.getter.call(vm,vm)相当于调用vm.value，及通过get（）获得obj.value
     if (this.user) {
       try {
         value = this.getter.call(vm, vm)

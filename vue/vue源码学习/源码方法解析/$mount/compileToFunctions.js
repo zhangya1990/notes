@@ -27,6 +27,7 @@ function compile$1 (
   template,
   options
 ) {
+  //生成ast树结构
   var ast = parse(template.trim(), options);
   optimize(ast, options);
   var code = generate(ast, options);
