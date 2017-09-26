@@ -1,0 +1,26 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script src="./Rx.js"></script>
+    <script>
+        var weight = Rx.Observable.of(70, 72, 76, 79, 75);
+        var height = Rx.Observable.from([1.76, 1.77, 1.78]);
+        // var bmi = weight.combineLatest(height,(w,h)=>{
+        //     console.log(w,h)
+        //     return w/(h*h)
+        // });
+        var bmi = height.combineLatest(weight,(h,w)=>{
+            console.log(w,h)
+            return w/(h*h)
+        });
+        var mergeRes = weight.merge(height);
+        // bmi.subscribe(x=>console.log(x))
+        mergeRes.subscribe(x=>console.log(x))
+    </script>
+</body>
+</html>

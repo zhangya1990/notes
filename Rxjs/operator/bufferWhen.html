@@ -1,0 +1,17 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script src="./Rx.js"></script>
+    <script>
+        //给定的条件开启，关闭缓冲区
+        const clicks = Rx.Observable.fromEvent(document,'click');
+        const curOb = clicks.bufferWhen(e=>Rx.Observable.interval(1000+Math.round(Math.random()*2000)));
+        curOb.subscribe(x=>console.log(x)) 
+    </script>
+</body>
+</html>

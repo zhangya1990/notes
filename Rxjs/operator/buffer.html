@@ -24,7 +24,8 @@
     let title = document.querySelector('.title');
     let interval = Rx.Observable.interval(1000);
     let clicks = Rx.Observable.fromEvent(title,'click');
-    let intervalClicks = clicks.buffer(interval);
+    let intervalClicks = interval.buffer(clicks);
+    intervalClicks.subscribe(x=>console.log(x))
     intervalClicks.subscribe(x=>console.log(x))
 </script>
 </html>

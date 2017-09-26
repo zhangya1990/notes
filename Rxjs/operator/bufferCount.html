@@ -18,8 +18,9 @@
 <script>
     let title = document.querySelector('.title');
     let clicks = Rx.Observable.fromEvent(title,'click').map(e=>e.clientX);
-    //bufferCount的参数，第一个参数为缓冲区的长度，及缓冲的数据的数量，第二个参数为发出数据之后缓冲多少数据之后再次发出数据
-    let countClicks = clicks.bufferCount(2,3);
+    //bufferCount的参数，第一个参数为缓冲区的长度，及缓冲的数据的数量，第二个参数为发出数据之后缓冲多少数据之后再次发出数据,如果不提供第二个参数，当缓冲区满的时候发出并清空，及等同于第二个参数与第一个参数相同
+    let countClicks = clicks.bufferCount(2);
+    // let countClicks = clicks.bufferCount(2,3);
     countClicks.subscribe(x=>console.log(x));
 </script>
 </html>

@@ -1,0 +1,235 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <link rel="stylesheet" href="./bootstrap.min.css">
+</head>
+
+<body>
+    <input type="text" class="todo-val">
+    <input type="button" value="add" class="button-add">
+
+    <ul class="list-group"></ul>
+
+
+
+    <script src="./Rx.js"></script>
+    <script>
+        const { Observable, Subject } = Rx;
+        const createTodoItem = (data) => {
+            const liItem = document.createElement('li');
+            liItem.classList.add('list-group-item', `tode-item-${data._id}`);
+            liItem.setAttribute('data-id', data._id.toString())
+            const liHtml = `
+                            ${data.value}
+                            <button type="button" class="btn btn-default button-remove" aria-label="right Align">
+                            <span class="glyphicon glyphicon-remove" aria-hidden="true"></span>
+                            </button>
+                        `;
+            liItem.innerHTML = liHtml;
+            return liItem
+        }
+
+        //Observable.create创建一个observable，其中的observer.complete()执行后，会自动触发unsubscribe() 【即create方法返回的函数】执行，
+
+
+        //switchMap理解  map and switch
+        //如果 Observable 中流动的数据也是 Observable，switch 会取消订阅之前订阅的 Observable，然后将数据流中最新的一个 Observable 订阅并将它的值传递给下一个操作符。
+        //第一次点击的时候，会在200毫秒之后触发observer.next()和observer.complete()方法执行，如果在200毫秒之内第二次点击，会先主动调用第一次的unsubscribe()方法取消订阅，然后订阅第二次生成的observable，并将最新的observerble发射的值传递给下一个操作符
+
+        const mockHttpPost = (value) => {
+            return Observable.create(observer => {
+                let status = 'pending';
+                // console.log(clickCount)
+                const timer = setTimeout(() => {
+                    const result = {
+                        _id: ++dbIndex,
+                        value,
+                        isDone: false
+                    }
+                    // console.log(88888888 + dbIndex.toString())
+                    searchStorage.set(result._id, result);
+                    status = 'done';
+                    observer.next(result);
+                    observer.complete();
+                }, 200);
+                return () => {
+                    // console.log(clickCount)
+                    // console.log(6666666666 + dbIndex.toString())
+
+                    clearTimeout(timer);
+                    // if(status === 'pending'){
+                    //     console.warn('post canceled')
+                    // }
+                }
+            })
+        }
+
+        const mockToggle = (id, isDone) => {
+            return Observable.create((observer) => {
+                let status = 'pending'
+                const timmer = setTimeout(() => {
+                    const result = searchStorage.get(parseInt(id))
+                    result.isDone = !isDone
+                    searchStorage.set(result._id, result)
+                    status = 'done'
+                    observer.next(result)
+                    observer.complete()
+                }, 100)
+                return () => {
+                    clearTimeout(timmer)
+                    if (status === 'pending') {
+                        console.warn('post canceled')
+                    }
+                }
+            })
+        }
+
+        const search = (inputValue) => {
+            console.log(inputValue)
+            return Observable.create((observer) => {
+                let status = 'pending'
+                const timmer = setTimeout(() => {
+                    let result = null
+                    for (const [key, data] of searchStorage) {
+                        console.log(key,data)
+                        if (data.value === inputValue) {
+                            result = data
+                            break
+                        }
+                    }
+                    status = 'done'
+                    observer.next(result)
+                    observer.complete()
+                }, 400)
+                return () => {
+                    clearTimeout(timmer)
+                    if (status === 'pending') {
+                        console.warn('search canceled')
+                    }
+                }
+            })
+        }
+
+        let dbIndex = 0;
+        let clickCount = 0;
+        let searchStorage = function () {
+            let cache = {};
+            let count = -1;
+            return {
+                get: function (key) {
+                    return cache[key]
+                },
+                set: function (key, value) {
+                    cache[key] = value
+                },
+                [Symbol.iterator](){
+                    return {
+                        next(){
+                            let keys = Object.keys(cache);
+                            count++;
+                            console.log(cache)
+                            console.log(count)
+                            console.log({key:keys[count],data:cache[keys[count]]})
+                            return {
+                                value:{key:keys[count],data:cache[keys[count]]},
+                                done:!keys[count] 
+                            }
+                        }
+                    }
+                }
+            }
+        }();
+
+        const $input = document.querySelector('.todo-val');
+        const $list = document.querySelector('.list-group');
+        const $addBtn = document.querySelector('.button-add');
+
+        const types$ = Observable.fromEvent($input,'keydown').share();
+        const enter$ = types$.filter(e => e.keyCode === 13);
+        const search$ = types$.debounceTime(200)
+                            .filter(e=>e.keyCode !== 13)
+                            .map(e=>e.target.value)
+                            .switchMap(search)
+                            .do(res=>{
+                                const actived = document.querySelectorAll('.active');
+                                [...actived].forEach(item=>{
+                                    item.classList.remove('active');
+                                })
+                                if(res){
+                                    const curItem = document.querySelector(`.todo-item-${res._id}`);
+                                    item.classList.add('active')
+                                }
+                            })
+
+        const add$ = Observable.fromEvent($addBtn, 'click');
+        const input$ = enter$.merge(add$);
+        const clearInputSub$ = new Subject();
+
+
+        const item$ = input$
+            .map(() => $input.value.trim())
+            .filter(value => value !== '')
+            .do((() => clickCount++))
+            .distinct(null, clearInputSub$)//过滤与之前相同的值
+            .switchMap(mockHttpPost)
+            .map(createTodoItem)
+            .do(el => {
+                $list.appendChild(el)
+                $input.value = '';
+                //调用clearInputSub$.next()时，本次点击操作流已基本完成，item已经生成并插入dom，clearInputSub$的状态，配合distinct方法完成过滤
+                clearInputSub$.next();
+            })
+            .do(x => console.log(x))
+            // .publishReplay(1)
+            // .refCount()
+            .shareReplay();
+
+        const toggle$ = item$.mergeMap(curItem => {
+            return Observable.fromEvent(curItem, 'click')
+                .debounceTime(300)//debounceTime 在一顿狂点之后只发送300ms内的最新值
+                .filter(e => e.target === curItem)
+                .mapTo({
+                    data: {
+                        _id: curItem.dataset.id,
+                        idDone: curItem.classList.contains('done')
+                    },
+                    curItem
+                })
+                .switchMap(res => {
+                    return mockToggle(res.data._id, res.data.isDone)
+                        .mapTo(res.curItem)
+                })
+                .do(item => {
+                    if (item.classList.contains('done')) {
+                        item.classList.remove('done')
+                    } else {
+                        item.classList.add('done')
+                    }
+                    console.log(item)
+                })
+        });
+
+        const remove$ = item$.mergeMap(curItem => {
+            const $removeBtn = curItem.querySelector('.button-remove')
+            return Observable.fromEvent($removeBtn, 'click')
+                .mapTo(curItem)
+                .do(curItem => {
+                    curItem.parentNode.removeChild(curItem);
+                })
+        })
+
+        const app$ = toggle$.merge(remove$,search$);
+
+        app$.subscribe(x=>{
+            console.log(x)
+        },err=>{
+            console.log(err)
+        });
+    </script>
+</body>
+
+</html>

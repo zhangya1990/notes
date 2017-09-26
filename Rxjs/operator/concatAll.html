@@ -1,0 +1,16 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script src="./Rx.js"></script>
+    <script>
+        const clicks = Rx.Observable.fromEvent(document,'click');
+        // const inter = clicks.map(e=>Rx.Observable.interval(1000).take(4)).concatAll().subscribe(x=>console.log(x));  
+        const mergeall = clicks.map(e=>Rx.Observable.interval(1000).take(4)).mergeAll().subscribe(x=>console.log(x));
+    </script>
+</body>
+</html>

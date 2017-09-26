@@ -1,0 +1,35 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        .title{
+            width: 200px;
+            height: 200px;
+            background-color:red;
+        }
+    </style>
+</head>
+<body>
+    <div class="title"></div>
+    <script src="./Rx.js"></script>
+    <script>
+        const clicks = Rx.Observable.fromEvent(document,'click')
+            .map(e=>{
+                if(e.target.className === 'title') {
+                    return {x:e.clientX,y:e.clientY}
+                }
+                throw 'haha'
+            })
+            .catch((e,src)=>{
+                console.log(src)
+                    // src.subscribe(x=>console.log(x),
+                    // err=>{console.log(err)})
+                    throw e
+            })
+            .subscribe(x=>console.log(x),err=>console.log(err))
+    </script>
+</body>
+</html>

@@ -1,0 +1,19 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+</head>
+<body>
+    <script src="./Rx.js"></script>
+    <script>
+        //简单粗暴的讲就是map并merge
+        var letters = Rx.Observable.of('aa','bb','cc');
+        var cur = letters.mergeMap(x=>{
+            return Rx.Observable.interval(1000).take(2).map((i)=>i+x)
+        });
+        cur.subscribe(x=>console.log(x))
+    </script>
+</body>
+</html>
