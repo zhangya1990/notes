@@ -94,8 +94,8 @@
                 let status = 'pending'
                 const timmer = setTimeout(() => {
                     let result = null
-                    for (const [key, data] of searchStorage) {
-                        console.log(key,data)
+                    for (const key in searchStorage.cache) {
+                        let data = searchStorage.cache[key];
                         if (data.value === inputValue) {
                             result = data
                             break
@@ -118,29 +118,28 @@
         let clickCount = 0;
         let searchStorage = function () {
             let cache = {};
-            let count = -1;
             return {
                 get: function (key) {
                     return cache[key]
                 },
                 set: function (key, value) {
-                    cache[key] = value
+                    cache[key] = value;
+
                 },
-                [Symbol.iterator](){
+                [Symbol.iterator]() {
+                    let count = -1;
                     return {
-                        next(){
-                            let keys = Object.keys(cache);
+                        next() {
                             count++;
-                            console.log(cache)
-                            console.log(count)
-                            console.log({key:keys[count],data:cache[keys[count]]})
+                            let keys = Object.keys(cache);
                             return {
-                                value:{key:keys[count],data:cache[keys[count]]},
-                                done:!keys[count] 
+                                value: { key: keys[count], data: cache[keys[count]] },
+                                done: !keys[count]
                             }
                         }
                     }
-                }
+                },
+                cache
             }
         }();
 
@@ -148,47 +147,74 @@
         const $list = document.querySelector('.list-group');
         const $addBtn = document.querySelector('.button-add');
 
-        const types$ = Observable.fromEvent($input,'keydown').share();
+        const types$ = Observable.fromEvent($input, 'keydown').share();
         const enter$ = types$.filter(e => e.keyCode === 13);
         const search$ = types$.debounceTime(200)
-                            .filter(e=>e.keyCode !== 13)
-                            .map(e=>e.target.value)
-                            .switchMap(search)
-                            .do(res=>{
-                                const actived = document.querySelectorAll('.active');
-                                [...actived].forEach(item=>{
-                                    item.classList.remove('active');
-                                })
-                                if(res){
-                                    const curItem = document.querySelector(`.todo-item-${res._id}`);
-                                    item.classList.add('active')
-                                }
-                            })
+            .filter(e => e.keyCode !== 13)
+            .map(e => e.target.value)
+            .switchMap(search)
+            .do(res => {
+                const actived = document.querySelectorAll('.active');
+                [...actived].forEach(item => {
+                    item.classList.remove('active');
+                    if (res) {
+                        const curItem = document.querySelector(`.todo-item-${res._id}`);
+                        item.classList.add('active')
+                    }
+                })
+            })
 
         const add$ = Observable.fromEvent($addBtn, 'click');
         const input$ = enter$.merge(add$);
         const clearInputSub$ = new Subject();
 
-
+        let searchVal;
         const item$ = input$
             .map(() => $input.value.trim())
             .filter(value => value !== '')
-            .do((() => clickCount++))
             .distinct(null, clearInputSub$)//过滤与之前相同的值
-            .switchMap(mockHttpPost)
-            .map(createTodoItem)
-            .do(el => {
-                $list.appendChild(el)
-                $input.value = '';
-                //调用clearInputSub$.next()时，本次点击操作流已基本完成，item已经生成并插入dom，clearInputSub$的状态，配合distinct方法完成过滤
-                clearInputSub$.next();
+            .do((val) => { clickCount++; searchVal = val })
+            .switchMap(search)
+            .switchMap(res => {
+                if (!res) {
+                    return mockHttpPost(searchVal)
+                        .map(createTodoItem)
+                        .do(el => {
+                            $list.appendChild(el)
+                            $input.value = '';
+                            //调用clearInputSub$.next()时，本次点击操作流已基本完成，item已经生成并插入dom，clearInputSub$的状态，配合distinct方法完成过滤
+                            clearInputSub$.next();
+                        })
+                } else {
+                    return Observable.of(res).map(res => {
+                        console.log(res)
+                        return [...document.querySelectorAll('.list-group-item')].find(item => { console.log(item); return item.innerText.trim() === res.value })
+                    }).do(res => {
+                        const actived = document.querySelectorAll('.active');
+                        [...actived].forEach(item => {
+                            item.classList.remove('active');
+                            if (res) {
+                                const curItem = document.querySelector(`.todo-item-${res._id}`);
+                                item.classList.add('active')
+                            }
+                        })
+                    })
+                }
             })
-            .do(x => console.log(x))
+
+            .do(item => {
+                if(!item.classList.contains('active')){
+                    [...document.querySelectorAll('.active')].forEach(item=>item.classList.remove('active'));
+                    console.log(item)
+                    item.classList.add('active');
+                }
+            })
             // .publishReplay(1)
             // .refCount()
             .shareReplay();
 
         const toggle$ = item$.mergeMap(curItem => {
+            console.warn(curItem)
             return Observable.fromEvent(curItem, 'click')
                 .debounceTime(300)//debounceTime 在一顿狂点之后只发送300ms内的最新值
                 .filter(e => e.target === curItem)
@@ -218,16 +244,19 @@
             return Observable.fromEvent($removeBtn, 'click')
                 .mapTo(curItem)
                 .do(curItem => {
+                    console.log(curItem)
                     curItem.parentNode.removeChild(curItem);
                 })
         })
 
-        const app$ = toggle$.merge(remove$,search$);
+        const app$ = toggle$.merge(remove$, search$);
 
-        app$.subscribe(x=>{
+        app$.subscribe(x => {
             console.log(x)
-        },err=>{
+        }, err => {
             console.log(err)
+        }, complete => {
+            console.log('complete')
         });
     </script>
 </body>
