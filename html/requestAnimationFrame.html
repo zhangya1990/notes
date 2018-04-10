@@ -1,0 +1,106 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+        }
+
+        #box {
+            width: 100px;
+            height: 100px;
+            transform: translate(0, 0);
+            background: red;
+        }
+    </style>
+</head>
+
+<body>
+    <div id="box">
+        lalalala
+    </div>
+</body>
+<script>
+    //在requestAnimationFrame执行时，浏览器会尽可能保持和显示器一样的刷新频率，即60FPS（每秒钟刷新60次），如何理解？这里以60FPS为例，每帧16毫秒左右
+    //（1）当requestAnimationFrame中的回调函数执行时间小于16ms时，会按照60次每秒调用回调函数callback1,根据结果得知，此时requestIdleCallback中的每帧为16ms，动画执行完成之后还有剩余时间，回调函数执行
+
+    function callback1() {
+        var now = Date.now();
+        console.error('回调函数周期（当前调用开始到下次调用开始）:'+ (now - frameTimeStartTime))
+        console.error('两次回调函数之间时间差（当前调用结束到下次调用开始）:'+ (now - frameTimeEndTime))
+        frameTimeStartTime = now;
+        if (now - startTime > 1000) {
+            return
+        }
+
+        if (x === terminalX && y === terminalY) {
+            clearInterval(timer);
+            return
+        }
+        x < terminalX && (x += 1);
+        y < terminalY && (y += 1);
+        box.style.transform = `translate(${x}px,${y}px)`
+
+        requestIdleCallback(function (deadline) {
+            console.warn('当前帧剩余时间:'+deadline.timeRemaining())
+        })
+        requestAnimationFrame(callback1);
+        frameTimeEndTime = Date.now();
+    }
+
+    // 不要在requestAnimationFrame回调函数当中做大量的逻辑运算，会导致动画非常不流畅
+    //（2）当requestAnimationFrame中的回调函数执行时间大于16ms时，浏览器无法保持与显示器相同的刷新频率(猜测原因如此)，此时requestIdleCallback中的每帧理解为本次回调函数的执行时间(因为两次回调函数之间的等待时间几乎为零)，因此当前帧之内并无剩余时间(函数执行),requestIdleCallback当中的回调函数会一直等到某帧中有剩余时间才会执行，或者超时时间执行。
+
+
+    function callback2() {
+        var now = Date.now();
+        console.error('回调函数周期（当前调用开始到下次调用开始）:'+ (now - frameTimeStartTime))
+        console.error('两次回调函数之间时间差（当前调用结束到下次调用开始）:'+ (now - frameTimeEndTime))
+        frameTimeStartTime = now;
+        if (now - startTime > 1000) {
+            return
+        }
+
+        if (x === terminalX && y === terminalY) {
+            clearInterval(timer);
+            return
+        }
+        x < terminalX && (x += 1);
+        y < terminalY && (y += 1);
+        box.style.transform = `translate(${x}px,${y}px)`
+        for (var i = 0; i < 50; i++) {
+            console.log(i)
+
+        }
+        requestIdleCallback(function (deadline) {
+            console.warn('当前帧剩余时间:'+deadline.timeRemaining())
+        })
+        requestAnimationFrame(callback2);
+        frameTimeEndTime = Date.now();
+    }
+
+
+
+    var box = document.getElementById('box');
+    var terminalX = window.innerWidth - 100;
+    var terminalY = window.innerHeight - 100;
+    var x = 0;
+    var y = 0;
+    var timer;
+    var startTime = frameTimeStartTime = frameTimeEndTime =  Date.now();
+
+    // callback1();
+    callback2();
+    requestIdleCallback(function (deadline) {
+        console.error('初始渲染完成帧剩余时间:'+deadline.timeRemaining())
+    }/* ,{timeout:500} */)
+
+
+</script>
+
+</html>

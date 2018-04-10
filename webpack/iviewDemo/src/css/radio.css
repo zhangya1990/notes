@@ -1,0 +1,9 @@
+input[type=radio]{
+  color: red;
+}
+.ivu-radio-checked .ivu-radio-inner {
+  border-color: yellow;
+}
+.ivu-radio-inner:after {
+  background: yellow;
+}
