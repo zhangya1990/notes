@@ -53,7 +53,7 @@
         frameTimeEndTime = Date.now();
     }
 
-    // 不要在requestAnimationFrame回调函数当中做大量的逻辑运算，会导致动画非常不流畅
+    // 不要在requestAnimationFrame回调函数当中做复杂的逻辑处理，会导致动画非常不流畅
     //（2）当requestAnimationFrame中的回调函数执行时间大于16ms时，浏览器无法保持与显示器相同的刷新频率(猜测原因如此)，此时requestIdleCallback中的每帧理解为本次回调函数的执行时间(因为两次回调函数之间的等待时间几乎为零)，因此当前帧之内并无剩余时间(函数执行),requestIdleCallback当中的回调函数会一直等到某帧中有剩余时间才会执行，或者超时时间执行。
 
 
