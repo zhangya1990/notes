@@ -130,3 +130,71 @@ function recordScheduleUpdate() {
       }
     }
   }
+
+   // requestWork is called by the scheduler whenever a root receives an update.
+  // It's up to the renderer to call renderRoot at some point in the future.
+
+  // 当一个fiberRoot对象接收到一次更新时调度器调用requestWork
+  function requestWork(root, expirationTime) {
+      //将当前fiberRoot对象添加给调度器
+    addRootToSchedule(root, expirationTime);
+
+    if (isRendering) {
+      // Prevent reentrancy. Remaining work will be scheduled at the end of
+      // the currently rendering batch.
+      // 如果当前正在渲染，停止本次任务请求
+      return;
+    }
+
+    if (isBatchingUpdates) {
+      // Flush work at the end of the batch.
+      if (isUnbatchingUpdates) {
+        // ...unless we're inside unbatchedUpdates, in which case we should
+        // flush it now.
+        nextFlushedRoot = root;
+        nextFlushedExpirationTime = Sync;
+        performWorkOnRoot(root, Sync, false);
+      }
+      return;
+    }
+
+    // TODO: Get rid of Sync and use current time?
+    if (expirationTime === Sync) {
+      performSyncWork();
+    } else {
+      scheduleCallbackWithExpiration(expirationTime);
+    }
+  }
+
+
+  function addRootToSchedule(root, expirationTime) {
+    // Add the root to the schedule.
+    // Check if this root is already part of the schedule.
+
+    // 检查该root对象是否已经调度过
+    if (root.nextScheduledRoot === null) {
+      // This root is not already scheduled. Add it.
+      // 当前root还没有被调度过,添加任务到期时间
+      root.remainingExpirationTime = expirationTime;
+
+      if (lastScheduledRoot === null) {
+          //调度器首次执行，firstScheduledRoot，lastScheduledRoot赋值，root.nextScheduledRoot赋值，表明当前root已被调度过
+        firstScheduledRoot = lastScheduledRoot = root;
+        root.nextScheduledRoot = root;
+      } else {
+          //调度器已经调度过其他root，调度当前root，首先给将当前root添加到上次调度的root顺序后面，root.nextScheduledRoot 赋值为 firstScheduledRoot
+        lastScheduledRoot.nextScheduledRoot = root;
+        lastScheduledRoot = root;
+        lastScheduledRoot.nextScheduledRoot = firstScheduledRoot;
+      }
+    } else {
+      // This root is already scheduled, but its priority may have increased.
+      // 当前root对象已经被调度过，但是优先级有可能需要增加
+      var remainingExpirationTime = root.remainingExpirationTime;
+      if (remainingExpirationTime === NoWork || expirationTime < remainingExpirationTime) {
+        // Update the priority.
+        // 任务剩余到期时间大于期望的任务到期时间，则需要更新提高优先级,修改任务到期时间
+        root.remainingExpirationTime = expirationTime;
+      }
+    }
+  }
