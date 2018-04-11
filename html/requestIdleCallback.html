@@ -30,6 +30,9 @@
 
     // (2) 要解决以上问题，可以在回调函数当中分段处理,callback2
 
+    // 注意：
+    // 浏览器对动画的优化处理: 如果当前页面没有处于激活状态(非激活页或者最小化，如果浏览器失去焦点但当前页面处于浏览器激活状态不算),即使页面空闲，也不会高频的调用requestIdleCallback回调函数，而是会每隔10s钟触发一次，以节省设备的功耗。(requestIdleCallback 未做实验，效果如何不知，但requestAnimationFrame回调在这种情况下根本不会触发,css3动画依然会运行)
+
     function move() {
         var now = Date.now();
         console.warn('回调函数周期（当前调用开始到下次调用开始）:' + (now - frameTimeStartTime))

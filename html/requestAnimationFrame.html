@@ -26,6 +26,10 @@
     </div>
 </body>
 <script>
+    // 注意：
+    // requestAnimationFrame 与 requestIdleCallback 有个相同的特性，无论当前帧是否有空闲时间，回调函数最早(requestIdleCallback的回调函数不一定会执行)都只会在下一帧开始执行.
+
+
     //在requestAnimationFrame执行时，浏览器会尽可能保持和显示器一样的刷新频率，即60FPS（每秒钟刷新60次），如何理解？这里以60FPS为例，每帧16毫秒左右
     //（1）当requestAnimationFrame中的回调函数执行时间小于16ms时，会按照60次每秒调用回调函数callback1,根据结果得知，此时requestIdleCallback中的每帧为16ms，动画执行完成之后还有剩余时间，回调函数执行
 
