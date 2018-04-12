@@ -15,26 +15,32 @@ function legacyRenderSubtreeIntoContainer(parentComponent, children, container, 
     var root = container._reactRootContainer; //undefined
     if (!root) {
       // Initial mount
-      // 生成一个 ReactRoot ，挂载到 container 上
+      // 首次渲染
+      // 生成一个 ReactRoot 实例，挂载到 container 的 _reactRootContainer 属性上
       root = container._reactRootContainer = legacyCreateRootFromDOMContainer(container, forceHydrate);
       if (typeof callback === 'function') {
         var originalCallback = callback;
         callback = function () {
-          console.log(root._internalRoot)
+          // console.log(root._internalRoot) fiberRoot实例
           var instance = DOMRenderer.getPublicRootInstance(root._internalRoot);
-          console.log(instance)
+          console.log(instance) //组件实例 App组件实例
           originalCallback.call(instance);
         };
       }
       // Initial mount should not be batched.
+      // 首次插入必须同步执行，不能批量插入
       DOMRenderer.unbatchedUpdates(function () {
+        // 如果存在parentComponent，渲染子树
         if (parentComponent != null) {
           root.legacy_renderSubtreeIntoContainer(parentComponent, children, callback);
         } else {
+          //直接将children插入container
           root.render(children, callback);
         }
       });
     } else {
+
+      // 非首次渲染
       if (typeof callback === 'function') {
         var _originalCallback = callback;
         callback = function () {
@@ -69,5 +75,7 @@ function legacyRenderSubtreeIntoContainer(parentComponent, children, container, 
    
     // Legacy roots are not async by default.
     var isAsync = false;
+
+    // 以当前container初始化一个ReactRoot实例并返回，reactRootInstance._internalRoot = fiberRootInstance
     return new ReactRoot(container, isAsync, shouldHydrate);
   }

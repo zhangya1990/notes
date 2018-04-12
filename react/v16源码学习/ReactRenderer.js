@@ -1,3 +1,254 @@
+function createHostRootFiber(isAsync) {
+  var mode = isAsync ? AsyncMode | StrictMode : NoContext;
+  return createFiber(HostRoot, null, null, mode);
+}
+
+var createFiber = function (tag, pendingProps, key, mode) {
+  // $FlowFixMe: the shapes are exact here but Flow doesn't like constructors
+  return new FiberNode(tag, pendingProps, key, mode);
+};
+
+
+type FiberRoot = {
+    // fiber节点的容器元素相关信息，通常会直接传入容器元素
+    containerInfo: any,
+    // Used only by persistent updates.
+    pendingChildren: any,
+
+    // The currently active root fiber. This is the mutable root of the tree.
+     // 当前fiber树中激活状态（正在处理）的fiber节点
+    current: Fiber,
+    pendingCommitExpirationTime: ExpirationTime,
+
+
+    // A finished work-in-progress HostRoot that's ready to be committed.
+    // 准备好提交的已处理完成的work-in-progress
+    finishedWork: Fiber | null,
+
+    // Top context object, used by renderSubtreeIntoContainer
+    context: Object | null,
+    pendingContext: Object | null,
+
+    // Determines if we should attempt to hydrate on the initial mount
+    hydrate: boolean,
+
+    // Remaining expiration time on this root.
+    // 此节点剩余的任务到期时间
+    remainingExpirationTime: ExpirationTime,
+
+    // List of top-level batches. This list indicates whether a commit should be
+    // deferred. Also contains completion callbacks.
+    // 顶级批次清单。此列表指示是否应该推迟一次提交，还包含完成的回调
+    firstBatch: Batch | null,
+
+    // Linked-list of roots
+    // 多组件树FirberRoot对象以单链表存储链接，指向下一个需要调度的FiberRoot
+    nextScheduledRoot: FiberRoot | null,
+  };
+
+function createFiberRoot(containerInfo, isAsync, hydrate) {
+  // Cyclic construction. This cheats the type system right now because
+  // stateNode is any.
+  // 初始化一个空fiber，并且与root建立关联，fiber.stateNode = root  root.current = fiber
+  var uninitializedFiber = createHostRootFiber(isAsync);
+  var root = {
+    current: uninitializedFiber,
+    containerInfo: containerInfo,
+    pendingChildren: null,
+    pendingCommitExpirationTime: NoWork,
+    finishedWork: null,
+    context: null,
+    pendingContext: null,
+    hydrate: hydrate,
+    remainingExpirationTime: NoWork,
+    firstBatch: null,
+    nextScheduledRoot: null
+  };
+  uninitializedFiber.stateNode = root;
+  return root;
+}
+
+
+
+var reactReconciler = function (config) {
+  var getPublicInstance = config.getPublicInstance;
+
+  var _ReactFiberScheduler = ReactFiberScheduler(config),
+      computeUniqueAsyncExpiration = _ReactFiberScheduler.computeUniqueAsyncExpiration,
+      recalculateCurrentTime = _ReactFiberScheduler.recalculateCurrentTime,
+      computeExpirationForFiber = _ReactFiberScheduler.computeExpirationForFiber,
+      scheduleWork = _ReactFiberScheduler.scheduleWork,
+      requestWork = _ReactFiberScheduler.requestWork,
+      flushRoot = _ReactFiberScheduler.flushRoot,
+      batchedUpdates = _ReactFiberScheduler.batchedUpdates,
+      unbatchedUpdates = _ReactFiberScheduler.unbatchedUpdates,
+      flushSync = _ReactFiberScheduler.flushSync,
+      flushControlled = _ReactFiberScheduler.flushControlled,
+      deferredUpdates = _ReactFiberScheduler.deferredUpdates,
+      syncUpdates = _ReactFiberScheduler.syncUpdates,
+      interactiveUpdates = _ReactFiberScheduler.interactiveUpdates,
+      flushInteractiveUpdates = _ReactFiberScheduler.flushInteractiveUpdates,
+      legacyContext = _ReactFiberScheduler.legacyContext;
+
+  var findCurrentUnmaskedContext = legacyContext.findCurrentUnmaskedContext,
+      isContextProvider = legacyContext.isContextProvider,
+      processChildContext = legacyContext.processChildContext;
+
+
+  function getContextForSubtree(parentComponent) {
+    if (!parentComponent) {
+      return emptyObject;
+    }
+
+    var fiber = get(parentComponent);
+    var parentContext = findCurrentUnmaskedContext(fiber);
+    return isContextProvider(fiber) ? processChildContext(fiber, parentContext) : parentContext;
+  }
+
+  function scheduleRootUpdate(current, element, currentTime, expirationTime, callback) {
+    
+    callback = callback === undefined ? null : callback;
+    
+    // 注意首次插入时的partialState:{element}
+    var update = {
+      expirationTime: expirationTime,
+      partialState: { element: element },
+      callback: callback,
+      isReplace: false,
+      isForced: false,
+      capturedValue: null,
+      next: null
+    };
+    // 本次update对象添加到当前调度的fiber中，见 ./updateQueue.js
+    insertUpdateIntoFiber(current, update);
+
+    // 调度当前任务,见 ./scheduleWork.js
+    scheduleWork(current, expirationTime);
+
+    return expirationTime;
+  }
+
+  function updateContainerAtExpirationTime(element, container, parentComponent, currentTime, expirationTime, callback) {
+    // TODO: If this is a nested container, this won't be the root.
+    var current = container.current;
+
+    {
+      if (ReactFiberInstrumentation_1.debugTool) {
+        if (current.alternate === null) {
+          ReactFiberInstrumentation_1.debugTool.onMountContainer(container);
+        } else if (element === null) {
+          ReactFiberInstrumentation_1.debugTool.onUnmountContainer(container);
+        } else {
+          ReactFiberInstrumentation_1.debugTool.onUpdateContainer(container);
+        }
+      }
+    }
+
+// 首次插入时parentComponent为空对象
+    var context = getContextForSubtree(parentComponent);
+    if (container.context === null) {
+      container.context = context;
+    } else {
+      container.pendingContext = context;
+    }
+
+// 调度更新（插入）
+    return scheduleRootUpdate(current, element, currentTime, expirationTime, callback);
+  }
+
+  function findHostInstance(fiber) {
+    var hostFiber = findCurrentHostFiber(fiber);
+    if (hostFiber === null) {
+      return null;
+    }
+    return hostFiber.stateNode;
+  }
+
+// DOMRenderer对象
+  return {
+    createContainer: function (containerInfo, isAsync, hydrate) {
+      // 创建一个fiberRoot对象并返回
+      return createFiberRoot(containerInfo, isAsync, hydrate);
+    },
+    updateContainer: function (element, container, parentComponent, callback) {
+      var current = container.current;// 获取当前fiberNode  container(fiberRoot对象).current
+      var currentTime = recalculateCurrentTime();// 获取当前时间
+      var expirationTime = computeExpirationForFiber(current); //计算当前 fiberNode的过期时间,./expirationTime.js,同步插入 Sync
+      return updateContainerAtExpirationTime(element, container, parentComponent, currentTime, expirationTime, callback);
+    },
+    updateContainerAtExpirationTime: function (element, container, parentComponent, expirationTime, callback) {
+      var currentTime = recalculateCurrentTime();
+      return updateContainerAtExpirationTime(element, container, parentComponent, currentTime, expirationTime, callback);
+    },
+
+
+    flushRoot: flushRoot,
+
+    requestWork: requestWork,
+
+    computeUniqueAsyncExpiration: computeUniqueAsyncExpiration,
+
+    batchedUpdates: batchedUpdates,
+
+    unbatchedUpdates: unbatchedUpdates,
+
+    deferredUpdates: deferredUpdates,
+
+    syncUpdates: syncUpdates,
+
+    interactiveUpdates: interactiveUpdates,
+
+    flushInteractiveUpdates: flushInteractiveUpdates,
+
+    flushControlled: flushControlled,
+
+    flushSync: flushSync,
+
+// container fiberRoot实例
+    getPublicRootInstance: function (container) {
+      var containerFiber = container.current;// 根fiberNode实例(HostRoot)
+      if (!containerFiber.child) {
+        return null;
+      }
+      switch (containerFiber.child.tag) {
+        case HostComponent:
+        // div span p ...
+          return getPublicInstance(containerFiber.child.stateNode);
+        default:
+        // App组件实例
+          return containerFiber.child.stateNode;
+      }
+    },
+
+
+    findHostInstance: findHostInstance,
+
+    findHostInstanceWithNoPortals: function (fiber) {
+      var hostFiber = findCurrentHostFiberWithNoPortals(fiber);
+      if (hostFiber === null) {
+        return null;
+      }
+      return hostFiber.stateNode;
+    },
+    injectIntoDevTools: function (devToolsConfig) {
+      var findFiberByHostInstance = devToolsConfig.findFiberByHostInstance;
+
+      return injectInternals(_assign({}, devToolsConfig, {
+        findHostInstanceByFiber: function (fiber) {
+          return findHostInstance(fiber);
+        },
+        findFiberByHostInstance: function (instance) {
+          if (!findFiberByHostInstance) {
+            // Might not be implemented by the renderer.
+            return null;
+          }
+          return findFiberByHostInstance(instance);
+        }
+      }));
+    }
+  };
+};
+
 var DOMRenderer = reactReconciler({
     getRootHostContext: function (rootContainerInstance) {
       var type = void 0;

@@ -130,6 +130,25 @@ export function insertUpdateIntoFiber<State>(
     queue2.last = update;
 }
 
+//创建一个空的updateQueue
+function createUpdateQueue(baseState) {
+  var queue = {
+    baseState: baseState,
+    expirationTime: NoWork,
+    first: null,
+    last: null,
+    callbackList: null,
+    hasForceUpdate: false,
+    isInitialized: false,
+    capturedValues: null
+  };
+  {
+    queue.isProcessing = false;
+  }
+  return queue;
+}
+
+
 // 处理更新队列任务，返回新状态对象
 function processUpdateQueue(current, workInProgress, queue, instance, props, renderExpirationTime) {
     if (current !== null && current.updateQueue === queue) {

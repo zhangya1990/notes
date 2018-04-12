@@ -232,7 +232,7 @@ function performWork(minExpirationTime, isAsync, dl) {
         }
     } else {
         while (nextFlushedRoot !== null && nextFlushedExpirationTime !== NoWork && (minExpirationTime === NoWork || minExpirationTime >= nextFlushedExpirationTime)) {
-            // 当前调度器中存在比期望优先级更高的任务，优先执行该任务
+            // 如果当前调度器中存在比期望优先级更高的任务，优先执行该任务
             performWorkOnRoot(nextFlushedRoot, nextFlushedExpirationTime, false);
             findHighestPriorityRoot();
         }
@@ -384,7 +384,7 @@ function performWorkOnRoot(root, expirationTime, isAsync) {
     isRendering = false;
 }
 
-// 渲染root
+// 渲染root,获取最终渲染任务fiber
 function renderRoot(root, expirationTime, isAsync) {
 
     // 任务正在执行
