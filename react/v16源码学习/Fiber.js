@@ -62,7 +62,7 @@ export type Fiber = {
     // fiber对应的function/class/module类型组件名.
     type: any,
 
-    // fiber所在组件树的根组件FiberRoot对象
+    // fiber所在组件树的根组件FiberRoot对象或者组件实例
     stateNode: any,
     // 处理完当前fiber后返回的fiber，
     // 返回当前fiber所在fiber树的父级fiber实例
