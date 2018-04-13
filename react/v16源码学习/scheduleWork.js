@@ -4,57 +4,11 @@ function scheduleWork(fiber, expirationTime: ExpirationTime) {
     return scheduleWorkImpl(fiber, expirationTime, false);
 }
 
-function scheduleWorkImpl(
-    fiber, expirationTime
-) {
-    let node = fiber;
-    while (node !== null) {
-        // 向上遍历至根组件fiber实例，并依次更新expirationTime到期时间
-        if (
-            node.expirationTime === NoWork ||
-            node.expirationTime > expirationTime
-        ) {
-            // 若fiber实例到期时间大于期望的任务到期时间，则更新fiber到期时间
-            node.expirationTime = expirationTime;
-        }
-        // 同时更新alternate fiber的到期时间
-        if (node.alternate !== null) {
-            if (
-                node.alternate.expirationTime === NoWork ||
-                node.alternate.expirationTime > expirationTime
-            ) {
-                // 若alternate fiber到期时间大于期望的任务到期时间，则更新fiber到期时间
-                node.alternate.expirationTime = expirationTime;
-            }
-        }
-        // node.return为空，说明到达组件树顶部
-        if (node.return === null) {
-            if (node.tag === HostRoot) {
-                // 确保是组件树根组件并获取FiberRoot实例
-                const root = node.stateNode;
-                // 请求处理任务
-                requestWork(root, expirationTime);
-            } else {
-                return;
-            }
-        }
-        // 获取父级组件fiber实例
-        node = node.return;
-    }
-}
 
 function scheduleWorkImpl(fiber, expirationTime, isErrorRecovery) {
 
     // 记录本次调度更新情况
     recordScheduleUpdate();
-
-    // 警告，暂时忽略
-    {
-        if (!isErrorRecovery && fiber.tag === ClassComponent) {
-            var instance = fiber.stateNode;
-            warnAboutInvalidUpdates(instance);
-        }
-    }
 
     var node = fiber;
     while (node !== null) {
@@ -77,9 +31,10 @@ function scheduleWorkImpl(fiber, expirationTime, isErrorRecovery) {
                 var root = node.stateNode;
 
 
-                // 暂时没有理解，日后再说
+                // 没有在任务处理的过程中，并且当前调度的任务优先级比本次计算所得的最高优先级还高（一个脱离了低级趣味的fiber）
                 if (!isWorking && nextRenderExpirationTime !== NoWork && expirationTime < nextRenderExpirationTime) {
                     // This is an interruption. (Used for performance tracking.)
+                    // 记录当前的fiber,当前的loop处理完成之后在做特殊处理
                     interruptedBy = fiber;
                     resetStack();
                 }
@@ -91,6 +46,7 @@ function scheduleWorkImpl(fiber, expirationTime, isErrorRecovery) {
                     // If we're in the render phase, we don't need to schedule this root
                     // for an update, because we'll do it before we exit...
 
+                    // 当前没有正在处理的任务 或者 存在正在处理的任务但是正在提交，还没有渲染 或者 正在渲染另外一个root，满足这样的情况才处理当前任务
                     !isWorking || isCommitting ||
                     // ...unless this is a different root than the one we're rendering.
                     nextRoot !== root) {
@@ -99,6 +55,8 @@ function scheduleWorkImpl(fiber, expirationTime, isErrorRecovery) {
                     // 请求处理任务
                     requestWork(root, expirationTime);
                 }
+
+                // happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate,死循环警告
                 if (nestedUpdateCount > NESTED_UPDATE_LIMIT) {
                     invariant(false, 'Maximum update depth exceeded. This can happen when a component repeatedly calls setState inside componentWillUpdate or componentDidUpdate. React limits the number of nested updates to prevent infinite loops.');
                 }
@@ -142,7 +100,7 @@ function requestWork(root, expirationTime) {
     if (isRendering) {
         // Prevent reentrancy. Remaining work will be scheduled at the end of
         // the currently rendering batch.
-        // 如果当前正在渲染，停止本次任务请求
+        // 如果当前正在处理一个fiberRoot对象(提交、渲染)，停止本次任务请求
         return;
     }
 
@@ -154,7 +112,7 @@ function requestWork(root, expirationTime) {
             // ...unless we're inside unbatchedUpdates, in which case we should
             // flush it now.
 
-            // 批量更新已经完成 ？？？（暂时理解为这样）
+            // 本次批量更新已经完成，同步更新当前root，并把优先级提升为Sync等级
             nextFlushedRoot = root;
             nextFlushedExpirationTime = Sync;
             performWorkOnRoot(root, Sync, false);
@@ -194,11 +152,11 @@ function addRootToSchedule(root, expirationTime) {
         }
     } else {
         // This root is already scheduled, but its priority may have increased.
-        // 当前root对象已经被调度过，但是优先级有可能需要调整
+        // 当前root对象已经被调度过，但是过期时间有可能需要调整
         var remainingExpirationTime = root.remainingExpirationTime;
         if (remainingExpirationTime === NoWork || expirationTime < remainingExpirationTime) {
             // Update the priority.
-            // 任务剩余到期时间大于期望的任务到期时间，则需要更新提高优先级,修改任务到期时间
+            // 任务剩余到期时间大于期望的任务到期时间，修改任务到期时间
             root.remainingExpirationTime = expirationTime;
         }
     }
@@ -210,7 +168,7 @@ function performSyncWork() {
 
 function performWork(minExpirationTime, isAsync, dl) {
 
-    //dl只有执行异步任务的时候才会存在
+    //dl只有执行异步任务的时候才会存在 ？？？ （可能并不准确）
     deadline = dl;
 
     // Keep working on roots until there's no more work, or until the we reach
@@ -218,7 +176,7 @@ function performWork(minExpirationTime, isAsync, dl) {
     // 获取最高优先级root及相应的过期时间
     findHighestPriorityRoot();
 
-    // 异步任务，暂时忽略
+    // 异步任务，暂时忽略 ？？？ ( enableUserTimingAPI 开发环境为true ， 开发环境下会连续触发两次渲染 ？？？ 以排除错误)
     if (enableUserTimingAPI && deadline !== null) {
         var didExpire = nextFlushedExpirationTime < recalculateCurrentTime();
         var timeout = expirationTimeToMs(nextFlushedExpirationTime);
@@ -232,7 +190,7 @@ function performWork(minExpirationTime, isAsync, dl) {
         }
     } else {
         while (nextFlushedRoot !== null && nextFlushedExpirationTime !== NoWork && (minExpirationTime === NoWork || minExpirationTime >= nextFlushedExpirationTime)) {
-            // 如果当前调度器中存在比期望优先级更高的任务，优先执行该任务
+            // 如果当前调度器中存在比期望优先级更高的任务，优先执行该任务，然后依次执行
             performWorkOnRoot(nextFlushedRoot, nextFlushedExpirationTime, false);
             findHighestPriorityRoot();
         }
@@ -335,9 +293,8 @@ function findHighestPriorityRoot() {
 
 
 function performWorkOnRoot(root, expirationTime, isAsync) {
-    !!isRendering ? invariant(false, 'performWorkOnRoot was called recursively. This error is likely caused by a bug in React. Please file an issue.') : void 0;
 
-    // 渲染开始
+    // 大渲染阶段开始(内部包括调和更新阶段，提交阶段和真正的渲染阶段，个人认为 isPerformingWork 更合适)
     isRendering = true;
 
     // Check if this is async work or sync/expired work.
@@ -384,10 +341,10 @@ function performWorkOnRoot(root, expirationTime, isAsync) {
     isRendering = false;
 }
 
-// 渲染root,获取最终渲染任务fiber
+// 调和更新root,获取最终渲染任务fiber(解析更新任务，个人理解为调度器任务完成，执行权交给更新器)
 function renderRoot(root, expirationTime, isAsync) {
 
-    // 任务正在执行
+    // 任务正在执行(更新器正在工作)
     isWorking = true;
 
     // Check if we're starting from a fresh stack, or if we're resuming from
@@ -397,8 +354,9 @@ function renderRoot(root, expirationTime, isAsync) {
         // Reset the stack and start working from the root.
         // 重置stack并且从当前root开始任务
         resetStack();
+
+        // 重新设置nextRoot和nextRenderExpirationTime
         nextRoot = root;
-        //如果当前最高优先过期时间与预期时间不符，赋值为当前期望时间
         nextRenderExpirationTime = expirationTime;
         //创建当前fiber的workInProgress，并赋值过期时间为当前期望过期时间
         nextUnitOfWork = createWorkInProgress(nextRoot.current, null, nextRenderExpirationTime);
@@ -406,9 +364,10 @@ function renderRoot(root, expirationTime, isAsync) {
         root.pendingCommitExpirationTime = NoWork;
     }
 
+    // 处理过程是否出现错误
     var didFatal = false;
 
-    // react 内部做记录 ???  赋值 currentFiber = nextUnitOfWork
+    // 赋值 currentFiber = nextUnitOfWork,记录开始调和 (React Tree Reconciliation)
     startWorkLoopTimer(nextUnitOfWork);
 
     do {
@@ -447,6 +406,7 @@ function renderRoot(root, expirationTime, isAsync) {
     } while (true);
 
     // We're done performing work. Time to clean up.
+    // 本次调和完成，清空本次调和的时间点记录
     stopWorkLoopTimer(interruptedBy);
     interruptedBy = null;
     isWorking = false;
@@ -501,6 +461,7 @@ function resetStack() {
     isRootReadyForCommit = false;
 }
 
+// 创建一个 workInProgress (工作任务)
 function createWorkInProgress(current, pendingProps, expirationTime) {
     var workInProgress = current.alternate;
     if (workInProgress === null) {
@@ -550,121 +511,318 @@ function createWorkInProgress(current, pendingProps, expirationTime) {
     return workInProgress;
 }
 
-
+// 开启本次调和时间节点记录
 function startWorkLoopTimer(nextUnitOfWork) {
+
+    // 开发环境相关，暂时不做考虑(用于调试目的？？？)
     if (enableUserTimingAPI) {
-      currentFiber = nextUnitOfWork;
-      if (!supportsUserTiming) {
-        return;
-      }
-      commitCountInCurrentWorkLoop = 0;
-      // This is top level call.
-      // Any other measurements are performed within.
-      beginMark('(React Tree Reconciliation)');
-      // Resume any measurements that were in progress during the last loop.
-      resumeTimers();
+        currentFiber = nextUnitOfWork;
+        if (!supportsUserTiming) {
+            return;
+        }
+
+        // 本次 任务loop中的commit计数器
+        commitCountInCurrentWorkLoop = 0;
+        // This is top level call.
+        // Any other measurements are performed within.
+        // 记录开始调和React Tree
+        beginMark('(React Tree Reconciliation)');
+
+        // Resume any measurements that were in progress during the last loop.
+        // 恢复上一次任务循环中的当前组件的 mark 和 measure
+        resumeTimers();
     }
-  }
+}
+
+
+// 清空本次调和时间节点记录
+function stopWorkLoopTimer(interruptedBy) {
+    if (enableUserTimingAPI) {
+        // 不支持perfermance api
+        if (!supportsUserTiming) {
+            return;
+        }
+        var warning$$1 = null;
+
+        // 记录是哪个任性的组件出了问题(应该是react性能分析用的，白tmd分析了这么长时间)
+        if (interruptedBy !== null) {
+            if (interruptedBy.tag === HostRoot) {
+                warning$$1 = 'A top-level update interrupted the previous render';
+            } else {
+                var componentName = getComponentName(interruptedBy) || 'Unknown';
+                warning$$1 = 'An update to ' + componentName + ' interrupted the previous render';
+            }
+        } else if (commitCountInCurrentWorkLoop > 1) {
+            warning$$1 = 'There were cascading updates';
+        }
+        commitCountInCurrentWorkLoop = 0;
+        // Pause any measurements until the next loop.
+        pauseTimers();
+        endMark('(React Tree Reconciliation)', '(React Tree Reconciliation)', warning$$1);
+    }
+}
+
 
 // 遍历fiber任务
-  function workLoop(isAsync) {
+function workLoop(isAsync) {
     if (!isAsync) {
-      // Flush all expired work.
-      while (nextUnitOfWork !== null) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
-      }
+        // Flush all expired work.
+        while (nextUnitOfWork !== null) {
+            nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        }
     } else {
-      // Flush asynchronous work until the deadline runs out of time.
-      while (nextUnitOfWork !== null && !shouldYield()) {
-        nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
-      }
+        // Flush asynchronous work until the deadline runs out of time.
+        while (nextUnitOfWork !== null && !shouldYield()) {
+            nextUnitOfWork = performUnitOfWork(nextUnitOfWork);
+        }
     }
-  }
+}
 
-  function performUnitOfWork(workInProgress) {
+// 执行单元任务
+function performUnitOfWork(workInProgress) {
     // console.log(workInProgress)
     // The current, flushed, state of this fiber is the alternate.
     // Ideally nothing should rely on this, but relying on it here
     // means that we don't need an additional field on the work in
     // progress.
+
+    // 获取当前workInProgress的稳定fiber对象,首次渲染时为fiberRoot对应的fiber对象
     var current = workInProgress.alternate;
 
     // See if beginning this work spawns more work.
+
+    // TMD 再说一遍 debug相关的一律忽略不管
     startWorkTimer(workInProgress);
-    {
-      ReactDebugCurrentFiber.setCurrentFiber(workInProgress);
+
+    // TMD debug相关的一律忽略不管
+    /* {
+        ReactDebugCurrentFiber.setCurrentFiber(workInProgress);
     }
 
     if (true && replayFailedUnitOfWorkWithInvokeGuardedCallback) {
-      stashedWorkInProgressProperties = _assign({}, workInProgress);
-    }
+        stashedWorkInProgressProperties = _assign({}, workInProgress);
+    } */
+
     var next = beginWork(current, workInProgress, nextRenderExpirationTime);
 
-    {
-      ReactDebugCurrentFiber.resetCurrentFiber();
+    /* {
+        ReactDebugCurrentFiber.resetCurrentFiber();
     }
     if (true && ReactFiberInstrumentation_1.debugTool) {
-      ReactFiberInstrumentation_1.debugTool.onBeginWork(workInProgress);
-    }
+        ReactFiberInstrumentation_1.debugTool.onBeginWork(workInProgress);
+    } */
 
     if (next === null) {
-      // If this doesn't spawn new work, complete the current work.
-      next = completeUnitOfWork(workInProgress);
+        // If this doesn't spawn new work, complete the current work.
+
+        // 如果没有子级的fiber，完成当前任务
+        next = completeUnitOfWork(workInProgress);
     }
 
     ReactCurrentOwner.current = null;
 
     return next;
-  }
+}
 
-  //根据组件类型调用不同方法，这些方法内调用更新器API将更新添加至更新队列
-  function beginWork(current, workInProgress, renderExpirationTime) {
-    if(workInProgress.tag === ForwardRef){
-      console.log(current)
-      console.log(workInProgress)
+//根据组件类型调用不同方法，这些方法内调用更新器API将更新添加至更新队列
+function beginWork(current, workInProgress, renderExpirationTime) {
+
+    // ForwardRef 相关，有兴趣的时候再研究
+    if (workInProgress.tag === ForwardRef) {
+        console.log(current)
+        console.log(workInProgress)
     }
-    
-    // 当前workInProgress已经处理过或  优先级低于当前需要处理的最高优先级 ？？？ 暂时没明白
+
+    // 当前workInProgress已经处理过或  优先级低于当前需要处理的最高优先级 ？？？ 暂时没明白，先考虑正常情况
     if (workInProgress.expirationTime === NoWork || workInProgress.expirationTime > renderExpirationTime) {
-      return bailoutOnLowPriority(current, workInProgress);
+        return bailoutOnLowPriority(current, workInProgress);
     }
 
+    // 首次运行任务，tag === HostRoot ，详见 ./updateMethods/*
     switch (workInProgress.tag) {
-      case IndeterminateComponent:
-        return mountIndeterminateComponent(current, workInProgress, renderExpirationTime);
-      case FunctionalComponent:
-        return updateFunctionalComponent(current, workInProgress);
-      case ClassComponent:
-        return updateClassComponent(current, workInProgress, renderExpirationTime);
-      case HostRoot:
-        return updateHostRoot(current, workInProgress, renderExpirationTime);
-      case HostComponent:
-        return updateHostComponent(current, workInProgress, renderExpirationTime);
-      case HostText:
-        return updateHostText(current, workInProgress);
-      case CallHandlerPhase:
-        // This is a restart. Reset the tag to the initial phase.
-        workInProgress.tag = CallComponent;
-      // Intentionally fall through since this is now the same.
-      case CallComponent:
-        return updateCallComponent(current, workInProgress, renderExpirationTime);
-      case ReturnComponent:
-        // A return component is just a placeholder, we can just run through the
-        // next one immediately.
-        return null;
-      case HostPortal:
-        return updatePortalComponent(current, workInProgress, renderExpirationTime);
-      case ForwardRef:
-        return updateForwardRef(current, workInProgress);
-      case Fragment:
-        return updateFragment(current, workInProgress);
-      case Mode:
-        return updateMode(current, workInProgress);
-      case ContextProvider:
-        return updateContextProvider(current, workInProgress, renderExpirationTime);
-      case ContextConsumer:
-        return updateContextConsumer(current, workInProgress, renderExpirationTime);
-      default:
-        invariant(false, 'Unknown unit of work tag. This error is likely caused by a bug in React. Please file an issue.');
+        case IndeterminateComponent:
+            return mountIndeterminateComponent(current, workInProgress, renderExpirationTime);
+        case FunctionalComponent:
+            return updateFunctionalComponent(current, workInProgress);
+        case ClassComponent:
+            // 处理 class 组件
+            return updateClassComponent(current, workInProgress, renderExpirationTime);
+            // 首次插入，处理container
+        case HostRoot:
+            return updateHostRoot(current, workInProgress, renderExpirationTime);
+        case HostComponent:
+            return updateHostComponent(current, workInProgress, renderExpirationTime);
+        case HostText:
+            return updateHostText(current, workInProgress);
+        case CallHandlerPhase:
+            // This is a restart. Reset the tag to the initial phase.
+            workInProgress.tag = CallComponent;
+        // Intentionally fall through since this is now the same.
+        case CallComponent:
+            return updateCallComponent(current, workInProgress, renderExpirationTime);
+        case ReturnComponent:
+            // A return component is just a placeholder, we can just run through the
+            // next one immediately.
+            return null;
+        case HostPortal:
+            return updatePortalComponent(current, workInProgress, renderExpirationTime);
+        case ForwardRef:
+            return updateForwardRef(current, workInProgress);
+        case Fragment:
+            return updateFragment(current, workInProgress);
+        case Mode:
+            return updateMode(current, workInProgress);
+        case ContextProvider:
+            return updateContextProvider(current, workInProgress, renderExpirationTime);
+        case ContextConsumer:
+            return updateContextConsumer(current, workInProgress, renderExpirationTime);
+        default:
+            invariant(false, 'Unknown unit of work tag. This error is likely caused by a bug in React. Please file an issue.');
     }
+}
+
+function completeUnitOfWork(workInProgress) {
+    // Attempt to complete the current unit of work, then move to the
+    // next sibling. If there are no more siblings, return to the
+    // parent fiber.
+    while (true) {
+      // The current, flushed, state of this fiber is the alternate.
+      // Ideally nothing should rely on this, but relying on it here
+      // means that we don't need an additional field on the work in
+      // progress.
+      var current = workInProgress.alternate;
+      {
+        ReactDebugCurrentFiber.setCurrentFiber(workInProgress);
+      }
+
+      var returnFiber = workInProgress['return'];
+      var siblingFiber = workInProgress.sibling;
+
+      if ((workInProgress.effectTag & Incomplete) === NoEffect) {
+        // This fiber completed.
+        var next = completeWork(current, workInProgress, nextRenderExpirationTime);
+        stopWorkTimer(workInProgress);
+        resetExpirationTime(workInProgress, nextRenderExpirationTime);
+        {
+          ReactDebugCurrentFiber.resetCurrentFiber();
+        }
+
+        if (next !== null) {
+          stopWorkTimer(workInProgress);
+          if (true && ReactFiberInstrumentation_1.debugTool) {
+            ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+          }
+          // If completing this work spawned new work, do that next. We'll come
+          // back here again.
+          return next;
+        }
+
+        if (returnFiber !== null &&
+        // Do not append effects to parents if a sibling failed to complete
+        (returnFiber.effectTag & Incomplete) === NoEffect) {
+          // Append all the effects of the subtree and this fiber onto the effect
+          // list of the parent. The completion order of the children affects the
+          // side-effect order.
+          if (returnFiber.firstEffect === null) {
+            returnFiber.firstEffect = workInProgress.firstEffect;
+          }
+          if (workInProgress.lastEffect !== null) {
+            if (returnFiber.lastEffect !== null) {
+              returnFiber.lastEffect.nextEffect = workInProgress.firstEffect;
+            }
+            returnFiber.lastEffect = workInProgress.lastEffect;
+          }
+
+          // If this fiber had side-effects, we append it AFTER the children's
+          // side-effects. We can perform certain side-effects earlier if
+          // needed, by doing multiple passes over the effect list. We don't want
+          // to schedule our own side-effect on our own list because if end up
+          // reusing children we'll schedule this effect onto itself since we're
+          // at the end.
+          var effectTag = workInProgress.effectTag;
+          // Skip both NoWork and PerformedWork tags when creating the effect list.
+          // PerformedWork effect is read by React DevTools but shouldn't be committed.
+          if (effectTag > PerformedWork) {
+            if (returnFiber.lastEffect !== null) {
+              returnFiber.lastEffect.nextEffect = workInProgress;
+            } else {
+              returnFiber.firstEffect = workInProgress;
+            }
+            returnFiber.lastEffect = workInProgress;
+          }
+        }
+
+        if (true && ReactFiberInstrumentation_1.debugTool) {
+          ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+        }
+
+        if (siblingFiber !== null) {
+          // If there is more work to do in this returnFiber, do that next.
+          return siblingFiber;
+        } else if (returnFiber !== null) {
+          // If there's no more work in this returnFiber. Complete the returnFiber.
+          workInProgress = returnFiber;
+          continue;
+        } else {
+          // We've reached the root.
+          isRootReadyForCommit = true;
+          return null;
+        }
+      } else {
+        // This fiber did not complete because something threw. Pop values off
+        // the stack without entering the complete phase. If this is a boundary,
+        // capture values if possible.
+        var _next = unwindWork(workInProgress);
+        // Because this fiber did not complete, don't reset its expiration time.
+        if (workInProgress.effectTag & DidCapture) {
+          // Restarting an error boundary
+          stopFailedWorkTimer(workInProgress);
+        } else {
+          stopWorkTimer(workInProgress);
+        }
+
+        {
+          ReactDebugCurrentFiber.resetCurrentFiber();
+        }
+
+        if (_next !== null) {
+          stopWorkTimer(workInProgress);
+          if (true && ReactFiberInstrumentation_1.debugTool) {
+            ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+          }
+          // If completing this work spawned new work, do that next. We'll come
+          // back here again.
+          // Since we're restarting, remove anything that is not a host effect
+          // from the effect tag.
+          _next.effectTag &= HostEffectMask;
+          return _next;
+        }
+
+        if (returnFiber !== null) {
+          // Mark the parent fiber as incomplete and clear its effect list.
+          returnFiber.firstEffect = returnFiber.lastEffect = null;
+          returnFiber.effectTag |= Incomplete;
+        }
+
+        if (true && ReactFiberInstrumentation_1.debugTool) {
+          ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+        }
+
+        if (siblingFiber !== null) {
+          // If there is more work to do in this returnFiber, do that next.
+          return siblingFiber;
+        } else if (returnFiber !== null) {
+          // If there's no more work in this returnFiber. Complete the returnFiber.
+          workInProgress = returnFiber;
+          continue;
+        } else {
+          return null;
+        }
+      }
+    }
+
+    // Without this explicit null return Flow complains of invalid return type
+    // TODO Remove the above while(true) loop
+    // eslint-disable-next-line no-unreachable
+    return null;
   }

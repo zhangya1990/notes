@@ -2,11 +2,14 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
     // Push context providers early to prevent context stack mismatches.
     // During mounting we don't know the child context yet as the instance doesn't exist.
     // We will invalidate the child context in finishClassComponent() right after rendering.
+    // content 相关
     var hasContext = pushLegacyContextProvider(workInProgress);
     var shouldUpdate = void 0;
+    // 首次插入组件时，current === null ， workInProgress.stateNode === null
     if (current === null) {
       if (workInProgress.stateNode === null) {
         // In the initial pass we might need to construct the instance.
+        // ../ClassInstance.js
         constructClassInstance(workInProgress, workInProgress.pendingProps);
         mountClassInstance(workInProgress, renderExpirationTime);
 

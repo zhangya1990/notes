@@ -15,6 +15,33 @@ export const ReturnComponent = 9; // placeholder（占位符）
 export const Fragment = 10; // 片段
 
 
+// TypeOfSideEffect
+export type TypeOfSideEffect = number;
+
+// Don't change these two values. They're used by React Dev Tools.
+export const NoEffect = /*              */ 0b000000000000;
+export const PerformedWork = /*         */ 0b000000000001;
+
+// You can change the rest (and add more).
+export const Placement = /*             */ 0b000000000010;
+export const Update = /*                */ 0b000000000100;
+export const PlacementAndUpdate = /*    */ 0b000000000110;
+export const Deletion = /*              */ 0b000000001000;
+export const ContentReset = /*          */ 0b000000010000;
+export const Callback = /*              */ 0b000000100000;
+export const DidCapture = /*            */ 0b000001000000;
+export const Ref = /*                   */ 0b000010000000;
+export const ErrLog = /*                */ 0b000100000000;
+export const Snapshot = /*              */ 0b100000000000;
+
+// Union of all host effects
+export const HostEffectMask = /*        */ 0b100111111111;
+
+export const Incomplete = /*            */ 0b001000000000;
+export const ShouldCapture = /*         */ 0b010000000000;
+
+
+
 // fiber root 对象
 export type FiberRoot = {
     // fiber节点的容器元素相关信息，通常会直接传入容器元素
@@ -159,3 +186,92 @@ export type Fiber = {
     // work-in-progress指向处理过程中的fiber，而当前fiber总是维护处理完成的最新版本的fiber。
     alternate: Fiber | null,
 };
+
+// 根据element相关属性创建一个fiber实例
+function createFiberFromElement(element, mode, expirationTime) {
+  var owner = null;
+  {
+    owner = element._owner;
+  }
+
+  var fiber = void 0;
+  var type = element.type;
+  var key = element.key;
+  var pendingProps = element.props;
+
+  var fiberTag = void 0;
+  if (typeof type === 'function') {
+
+    // 获取组件类别 类组件 或者 说不清楚类型的组件 - - ！！
+    fiberTag = shouldConstruct(type) ? ClassComponent : IndeterminateComponent;
+  } else if (typeof type === 'string') {
+    fiberTag = HostComponent;
+  } else {
+    switch (type) {
+      case REACT_FRAGMENT_TYPE:
+        return createFiberFromFragment(pendingProps.children, mode, expirationTime, key);
+      case REACT_ASYNC_MODE_TYPE:
+        fiberTag = Mode;
+        mode |= AsyncMode | StrictMode;
+        break;
+      case REACT_STRICT_MODE_TYPE:
+        fiberTag = Mode;
+        mode |= StrictMode;
+        break;
+      case REACT_CALL_TYPE:
+        fiberTag = CallComponent;
+        break;
+      case REACT_RETURN_TYPE:
+        fiberTag = ReturnComponent;
+        break;
+      default:
+        {
+          if (typeof type === 'object' && type !== null) {
+            switch (type.$$typeof) {
+              case REACT_PROVIDER_TYPE:
+                fiberTag = ContextProvider;
+                break;
+              case REACT_CONTEXT_TYPE:
+                // This is a consumer
+                fiberTag = ContextConsumer;
+                break;
+              case REACT_FORWARD_REF_TYPE:
+                fiberTag = ForwardRef;
+                break;
+              default:
+                if (typeof type.tag === 'number') {
+                  // Currently assumed to be a continuation and therefore is a
+                  // fiber already.
+                  // TODO: The yield system is currently broken for updates in
+                  // some cases. The reified yield stores a fiber, but we don't
+                  // know which fiber that is; the current or a workInProgress?
+                  // When the continuation gets rendered here we don't know if we
+                  // can reuse that fiber or if we need to clone it. There is
+                  // probably a clever way to restructure this.
+                  fiber = type;
+                  fiber.pendingProps = pendingProps;
+                  fiber.expirationTime = expirationTime;
+                  return fiber;
+                } else {
+                  throwOnInvalidElementType(type, owner);
+                }
+                break;
+            }
+          } else {
+            throwOnInvalidElementType(type, owner);
+          }
+        }
+    }
+  }
+
+  fiber = createFiber(fiberTag, pendingProps, key, mode);
+  fiber.type = type;
+  fiber.expirationTime = expirationTime;
+
+  {
+    fiber._debugSource = element._source;
+    fiber._debugOwner = element._owner;
+  }
+
+  return fiber;
+}

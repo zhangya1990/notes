@@ -78,57 +78,48 @@ export function insertUpdateIntoQueue<State>(
         queue.last.next = update;
         queue.last = update;
     }
+
+    //如果更新队列的到期时间大于本次更新的到期时间，更新队列的到期时间(始终保持更新队列的到期时间为优先级最高的更新任务的到期时间)
     if (
         queue.expirationTime === NoWork ||
         queue.expirationTime > update.expirationTime
     ) {
-        // 更新最近到期时间
+        // 设置更新队列的到期时间
         queue.expirationTime = update.expirationTime;
     }
 }
+
 // 添加更新至fiber实例
-export function insertUpdateIntoFiber<State>(
-    fiber: Fiber,
-    update: Update<State>,
-) {
-    // 可以创建两个独立的更新队列
-    // alternate主要用来保存更新过程中各版本更新队列，方便崩溃或冲突时回退
-    const alternateFiber = fiber.alternate;
-    let queue1 = fiber.updateQueue;
-    if (queue1 === null) {
-        // 更新队列不存在，则创建一个空的更新队列
-        queue1 = fiber.updateQueue = createUpdateQueue((null));
-    }
-
-    let queue2;
-    if (alternateFiber !== null) {
-        // alternate fiber实例存在，则需要为此
-        queue2 = alternateFiber.updateQueue;
-        if (queue2 === null) {
-            queue2 = alternateFiber.updateQueue = createUpdateQueue((null: any));
-        }
-    } else {
-        queue2 = null;
-    }
-    queue2 = queue2 !== queue1 ? queue2 : null;
-
+function insertUpdateIntoFiber(fiber, update) {
+    ensureUpdateQueues(fiber);
+    var queue1 = q1;
+    var queue2 = q2;
+  
+    // If there's only one queue, add the update to that queue and exit.
     // 如果只存在一个更新队列
     if (queue2 === null) {
-        insertUpdateIntoQueue(queue1, update);
-        return;
+      insertUpdateIntoQueue(queue1, update);
+      return;
     }
-
+  
+    // If either queue is empty, we need to add to both queues.
     // 如果任意更新队列为空，则需要将更新添加至两个更新队列
     if (queue1.last === null || queue2.last === null) {
-        insertUpdateIntoQueue(queue1, update);
-        insertUpdateIntoQueue(queue2, update);
-        return;
+      insertUpdateIntoQueue(queue1, update);
+      insertUpdateIntoQueue(queue2, update);
+      return;
     }
-
+  
+    // If both lists are not empty, the last update is the same for both lists
+    // because of structural sharing. So, we should only append to one of
+    // the lists.
     // 如果2个更新队列均非空，则添加更新至第一个队列，并更新另一个队列的尾部更新项
     insertUpdateIntoQueue(queue1, update);
+    // But we still need to update the `last` pointer of queue2.
     queue2.last = update;
-}
+  }
+
+
 
 //创建一个空的updateQueue
 function createUpdateQueue(baseState) {
@@ -164,6 +155,8 @@ function processUpdateQueue(current, workInProgress, queue, instance, props, ren
             capturedValues: currentQueue.capturedValues,
             // These fields are no longer valid because they were already committed.
             // Reset them.
+
+            // 如果当前workInProgress的稳定fiber版本的updateQueue与当前更新对象相同，重置callbackList和hasForceUpdate
             callbackList: null,
             hasForceUpdate: false
         };
@@ -213,18 +206,10 @@ function processUpdateQueue(current, workInProgress, queue, instance, props, ren
             continue;
         }
 
+        // 能走到这里的都是优先级足够的
         // This update does have sufficient priority.
 
-        // If no previous updates were skipped, drop this update from the queue by
-        // advancing the head of the list.
-
-        // 如果之前没有跳过更新，说明每环节的更新都执行了，修改链表第一个子节点为当前更新的下一环queue.first = update.next;
-        if (!didSkip) {
-            queue.first = update.next;
-            if (queue.first === null) {
-                queue.last = null;
-            }
-        }
+        
 
         // Invoke setState callback an extra time to help detect side-effects.
         // Ignore the return value in this case.
@@ -278,6 +263,17 @@ function processUpdateQueue(current, workInProgress, queue, instance, props, ren
             }
         }
 
+        // If no previous updates were skipped, drop this update from the queue by
+        // advancing the head of the list.
+
+        // 如果之前没有跳过更新，说明所有环节的优先级都足够，修改链表第一个子节点为当前更新的下一环queue.first = update.next，当前环节已经处理完成
+        if (!didSkip) {
+            queue.first = update.next;
+            if (queue.first === null) {
+                queue.last = null;
+            }
+        }
+
         // 处理下一环更新
         update = update.next;
     }
@@ -287,6 +283,7 @@ function processUpdateQueue(current, workInProgress, queue, instance, props, ren
         workInProgress.effectTag |= Callback;
     } else if (queue.first === null && !queue.hasForceUpdate && queue.capturedValues === null) {
         // The queue is empty. We can reset it.
+        // 队列处理完成，并且没有callback ！！！,重置为空
         workInProgress.updateQueue = null;
     }
 
