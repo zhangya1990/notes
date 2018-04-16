@@ -9,6 +9,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
   
     var updater = {
       isMounted: isMounted,
+
+      // setState
       enqueueSetState: function (instance, partialState, callback) {
         var fiber = get(instance);
         callback = callback === undefined ? null : callback;
@@ -28,6 +30,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
         insertUpdateIntoFiber(fiber, update);
         scheduleWork(fiber, expirationTime);
       },
+
+      // replaceState
       enqueueReplaceState: function (instance, state, callback) {
         var fiber = get(instance);
         callback = callback === undefined ? null : callback;
@@ -47,6 +51,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
         insertUpdateIntoFiber(fiber, update);
         scheduleWork(fiber, expirationTime);
       },
+
+      // forceUpdate
       enqueueForceUpdate: function (instance, callback) {
         var fiber = get(instance);
         callback = callback === undefined ? null : callback;
@@ -68,6 +74,7 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       }
     };
   
+    // shouldComponentUpdate hook
     function checkShouldComponentUpdate(workInProgress, oldProps, newProps, oldState, newState, newContext) {
       if (oldProps === null || workInProgress.updateQueue !== null && workInProgress.updateQueue.hasForceUpdate) {
         // If the workInProgress already has an Update effect, return true
@@ -162,23 +169,33 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       instance.state = workInProgress.memoizedState;
     }
   
+    // 设置 workInProgress 和 instance 相关属性
     function adoptClassInstance(workInProgress, instance) {
+
+      // 组件实例 添加 updater
       instance.updater = updater;
+
+      // 跟容器解析的时候 fiber.stateNode = fiberRoot , react组件解析的时候为组件实例
       workInProgress.stateNode = instance;
       // The instance needs access to the fiber so that it can schedule updates
+      // 添加 instance._reactInternalFiber = workInProgress
       set(instance, workInProgress);
       {
         instance._reactInternalInstance = fakeInternalInstance;
       }
     }
   
+    // 组件实例化
     function constructClassInstance(workInProgress, props) {
       var ctor = workInProgress.type;
+
+      // context 相关
       var unmaskedContext = getUnmaskedContext(workInProgress);
       var needsContext = isContextConsumer(workInProgress);
       var context = needsContext ? getMaskedContext(workInProgress, unmaskedContext) : emptyObject;
   
       // Instantiate twice to help detect side-effects.
+      // 初始化两次 调试使用
       if (debugRenderPhaseSideEffects || debugRenderPhaseSideEffectsForStrictMode && workInProgress.mode & StrictMode) {
         new ctor(props, context); // eslint-disable-line no-new
       }
@@ -186,6 +203,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       debugger;
       var instance = new ctor(props, context);
       var state = instance.state !== null && instance.state !== undefined ? instance.state : null;
+
+      // workInProgress添加instance
       adoptClassInstance(workInProgress, instance);
   
       {
@@ -230,14 +249,18 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
         }
       }
   
+      // 添加state缓存，即prevState
       workInProgress.memoizedState = state;
   
+      // 调用 getDerivedStateFromProps 生命周期函数，由props衍生从出新的state
       var partialState = callGetDerivedStateFromProps(workInProgress, instance, props, state);
   
       if (partialState !== null && partialState !== undefined) {
         // Render-phase updates (like this) should not be added to the update queue,
         // So that multiple render passes do not enqueue multiple updates.
         // Instead, just synchronously merge the returned state into the instance.
+
+        // 在渲染阶段多次更新不会添加到update queue中，理解为在实例化组件阶段，通过getDerivedStateFromProps获取的state不会单独更新一次，而是直接合并到prevState中
         workInProgress.memoizedState = _assign({}, workInProgress.memoizedState, partialState);
       }
   
@@ -294,19 +317,20 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       }
     }
   
+
     function callGetDerivedStateFromProps(workInProgress, instance, nextProps, prevState) {
       var type = workInProgress.type;
   
   
       if (typeof type.getDerivedStateFromProps === 'function') {
-        if (debugRenderPhaseSideEffects || debugRenderPhaseSideEffectsForStrictMode && workInProgress.mode & StrictMode) {
+        /* if (debugRenderPhaseSideEffects || debugRenderPhaseSideEffectsForStrictMode && workInProgress.mode & StrictMode) {
           // Invoke method an extra time to help detect side-effects.
           type.getDerivedStateFromProps.call(null, nextProps, prevState);
-        }
+        } */
   
         var partialState = type.getDerivedStateFromProps.call(null, nextProps, prevState);
   
-        {
+        /* {
           if (partialState === undefined) {
             var componentName = getComponentName(workInProgress) || 'Component';
             if (!didWarnAboutUndefinedDerivedState.has(componentName)) {
@@ -314,7 +338,7 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
               warning(false, '%s.getDerivedStateFromProps(): A valid state object (or null) must be returned. ' + 'You have returned undefined.', componentName);
             }
           }
-        }
+        } */
   
         return partialState;
       }
@@ -325,6 +349,7 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       var ctor = workInProgress.type;
       var current = workInProgress.alternate;
   
+      // 各种检查，报警
       {
         checkClassInstance(workInProgress);
       }
@@ -333,6 +358,7 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       var props = workInProgress.pendingProps;
       var unmaskedContext = getUnmaskedContext(workInProgress);
   
+      // 给组件实例添加 props state refs context
       instance.props = props;
       instance.state = workInProgress.memoizedState;
       instance.refs = emptyObject;
@@ -351,9 +377,12 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       // In order to support react-lifecycles-compat polyfilled components,
       // Unsafe lifecycles should not be invoked for components using the new APIs.
       if (typeof ctor.getDerivedStateFromProps !== 'function' && typeof instance.getSnapshotBeforeUpdate !== 'function' && (typeof instance.UNSAFE_componentWillMount === 'function' || typeof instance.componentWillMount === 'function')) {
+
+        // 调用 componentWillMount 钩子
         callComponentWillMount(workInProgress, instance);
         // If we had additional state updates during this life-cycle, let's
         // process them now.
+        // 如果在 componentWillMount 钩子中有 setState 操作，立刻解析
         var updateQueue = workInProgress.updateQueue;
         if (updateQueue !== null) {
           instance.state = processUpdateQueue(current, workInProgress, updateQueue, instance, props, renderExpirationTime);

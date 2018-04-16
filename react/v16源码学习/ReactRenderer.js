@@ -316,7 +316,9 @@ var DOMRenderer = reactReconciler({
         }
         parentNamespace = hostContextDev.namespace;
       }
+      // 创建DOM
       var domElement = createElement(type, props, rootContainerInstance, parentNamespace);
+      // 设置dom属性 
       precacheFiberNode(internalInstanceHandle, domElement);
       updateFiberProps(domElement, props);
       return domElement;

@@ -205,6 +205,7 @@ function performWork(minExpirationTime, isAsync, dl) {
         callbackID = -1;
     }
     // If there's work left over, schedule a new callback.
+    // 更新任务执行完成之后任然有剩余的任务，调度一个新的回调处理，即推迟到下一个 requestIdleCallback 处理
     if (nextFlushedExpirationTime !== NoWork) {
         scheduleCallbackWithExpiration(nextFlushedExpirationTime);
     }
@@ -647,7 +648,7 @@ function beginWork(current, workInProgress, renderExpirationTime) {
         case ClassComponent:
             // 处理 class 组件
             return updateClassComponent(current, workInProgress, renderExpirationTime);
-            // 首次插入，处理container
+        // 首次插入，处理container
         case HostRoot:
             return updateHostRoot(current, workInProgress, renderExpirationTime);
         case HostComponent:
@@ -681,148 +682,850 @@ function beginWork(current, workInProgress, renderExpirationTime) {
     }
 }
 
+// 完成任务单元调和
 function completeUnitOfWork(workInProgress) {
     // Attempt to complete the current unit of work, then move to the
     // next sibling. If there are no more siblings, return to the
     // parent fiber.
     while (true) {
-      // The current, flushed, state of this fiber is the alternate.
-      // Ideally nothing should rely on this, but relying on it here
-      // means that we don't need an additional field on the work in
-      // progress.
-      var current = workInProgress.alternate;
-      {
-        ReactDebugCurrentFiber.setCurrentFiber(workInProgress);
-      }
-
-      var returnFiber = workInProgress['return'];
-      var siblingFiber = workInProgress.sibling;
-
-      if ((workInProgress.effectTag & Incomplete) === NoEffect) {
-        // This fiber completed.
-        var next = completeWork(current, workInProgress, nextRenderExpirationTime);
-        stopWorkTimer(workInProgress);
-        resetExpirationTime(workInProgress, nextRenderExpirationTime);
+        // The current, flushed, state of this fiber is the alternate.
+        // Ideally nothing should rely on this, but relying on it here
+        // means that we don't need an additional field on the work in
+        // progress.
+        var current = workInProgress.alternate;
         {
-          ReactDebugCurrentFiber.resetCurrentFiber();
+            ReactDebugCurrentFiber.setCurrentFiber(workInProgress);
         }
 
-        if (next !== null) {
-          stopWorkTimer(workInProgress);
-          if (true && ReactFiberInstrumentation_1.debugTool) {
-            ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
-          }
-          // If completing this work spawned new work, do that next. We'll come
-          // back here again.
-          return next;
-        }
+        var returnFiber = workInProgress['return'];
+        var siblingFiber = workInProgress.sibling;
 
-        if (returnFiber !== null &&
-        // Do not append effects to parents if a sibling failed to complete
-        (returnFiber.effectTag & Incomplete) === NoEffect) {
-          // Append all the effects of the subtree and this fiber onto the effect
-          // list of the parent. The completion order of the children affects the
-          // side-effect order.
-          if (returnFiber.firstEffect === null) {
-            returnFiber.firstEffect = workInProgress.firstEffect;
-          }
-          if (workInProgress.lastEffect !== null) {
-            if (returnFiber.lastEffect !== null) {
-              returnFiber.lastEffect.nextEffect = workInProgress.firstEffect;
+        if ((workInProgress.effectTag & Incomplete) === NoEffect) {
+            // This fiber completed.
+            // 将当前fiber转化为DOM，并插入document中
+            var next = completeWork(current, workInProgress, nextRenderExpirationTime);
+            stopWorkTimer(workInProgress);
+            // 重新设置 workInProgress 的过期时间
+            resetExpirationTime(workInProgress, nextRenderExpirationTime);
+            {
+                ReactDebugCurrentFiber.resetCurrentFiber();
             }
-            returnFiber.lastEffect = workInProgress.lastEffect;
-          }
 
-          // If this fiber had side-effects, we append it AFTER the children's
-          // side-effects. We can perform certain side-effects earlier if
-          // needed, by doing multiple passes over the effect list. We don't want
-          // to schedule our own side-effect on our own list because if end up
-          // reusing children we'll schedule this effect onto itself since we're
-          // at the end.
-          var effectTag = workInProgress.effectTag;
-          // Skip both NoWork and PerformedWork tags when creating the effect list.
-          // PerformedWork effect is read by React DevTools but shouldn't be committed.
-          if (effectTag > PerformedWork) {
-            if (returnFiber.lastEffect !== null) {
-              returnFiber.lastEffect.nextEffect = workInProgress;
+            if (next !== null) {
+                stopWorkTimer(workInProgress);
+                if (true && ReactFiberInstrumentation_1.debugTool) {
+                    ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+                }
+                // If completing this work spawned new work, do that next. We'll come
+                // back here again.
+                return next;
+            }
+
+            if (returnFiber !== null &&
+                // Do not append effects to parents if a sibling failed to complete
+                (returnFiber.effectTag & Incomplete) === NoEffect) {
+                // Append all the effects of the subtree and this fiber onto the effect
+                // list of the parent. The completion order of the children affects the
+                // side-effect order.
+
+                // 递归将当前fiber的副作用链添加到父级fiber，由子级副作用的完成顺序决定副作用链的顺序
+                if (returnFiber.firstEffect === null) {
+                    returnFiber.firstEffect = workInProgress.firstEffect;
+                }
+                if (workInProgress.lastEffect !== null) {
+                    if (returnFiber.lastEffect !== null) {
+                        returnFiber.lastEffect.nextEffect = workInProgress.firstEffect;
+                    }
+                    returnFiber.lastEffect = workInProgress.lastEffect;
+                }
+
+                // If this fiber had side-effects, we append it AFTER the children's
+                // side-effects. We can perform certain side-effects earlier if
+                // needed, by doing multiple passes over the effect list. We don't want
+                // to schedule our own side-effect on our own list because if end up
+                // reusing children we'll schedule this effect onto itself since we're
+                // at the end.
+
+                // 如果当前的fiber本身也包含副作用，将fiber添加到子级副作用连的末尾
+                var effectTag = workInProgress.effectTag;
+                // Skip both NoWork and PerformedWork tags when creating the effect list.
+                // PerformedWork effect is read by React DevTools but shouldn't be committed.
+                if (effectTag > PerformedWork) {
+                    if (returnFiber.lastEffect !== null) {
+                        returnFiber.lastEffect.nextEffect = workInProgress;
+                    } else {
+                        returnFiber.firstEffect = workInProgress;
+                    }
+                    returnFiber.lastEffect = workInProgress;
+                }
+            }
+
+            if (true && ReactFiberInstrumentation_1.debugTool) {
+                ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+            }
+
+            if (siblingFiber !== null) {
+                // If there is more work to do in this returnFiber, do that next.
+                // 如果有兄弟节点，将兄弟节点的副作用也按顺序添加到副作用连末尾
+                return siblingFiber;
+            } else if (returnFiber !== null) {
+                // If there's no more work in this returnFiber. Complete the returnFiber.
+                // 其次递归处理父级节点
+                workInProgress = returnFiber;
+                continue;
             } else {
-              returnFiber.firstEffect = workInProgress;
+                // We've reached the root.
+                // 当所有都处理完成之后，标识符标记为true，提交更新
+                isRootReadyForCommit = true;
+                return null;
             }
-            returnFiber.lastEffect = workInProgress;
-          }
-        }
-
-        if (true && ReactFiberInstrumentation_1.debugTool) {
-          ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
-        }
-
-        if (siblingFiber !== null) {
-          // If there is more work to do in this returnFiber, do that next.
-          return siblingFiber;
-        } else if (returnFiber !== null) {
-          // If there's no more work in this returnFiber. Complete the returnFiber.
-          workInProgress = returnFiber;
-          continue;
         } else {
-          // We've reached the root.
-          isRootReadyForCommit = true;
-          return null;
-        }
-      } else {
-        // This fiber did not complete because something threw. Pop values off
-        // the stack without entering the complete phase. If this is a boundary,
-        // capture values if possible.
-        var _next = unwindWork(workInProgress);
-        // Because this fiber did not complete, don't reset its expiration time.
-        if (workInProgress.effectTag & DidCapture) {
-          // Restarting an error boundary
-          stopFailedWorkTimer(workInProgress);
-        } else {
-          stopWorkTimer(workInProgress);
-        }
+            // This fiber did not complete because something threw. Pop values off
+            // the stack without entering the complete phase. If this is a boundary,
+            // capture values if possible.
+            var _next = unwindWork(workInProgress);
+            // Because this fiber did not complete, don't reset its expiration time.
+            if (workInProgress.effectTag & DidCapture) {
+                // Restarting an error boundary
+                stopFailedWorkTimer(workInProgress);
+            } else {
+                stopWorkTimer(workInProgress);
+            }
 
-        {
-          ReactDebugCurrentFiber.resetCurrentFiber();
-        }
+            {
+                ReactDebugCurrentFiber.resetCurrentFiber();
+            }
 
-        if (_next !== null) {
-          stopWorkTimer(workInProgress);
-          if (true && ReactFiberInstrumentation_1.debugTool) {
-            ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
-          }
-          // If completing this work spawned new work, do that next. We'll come
-          // back here again.
-          // Since we're restarting, remove anything that is not a host effect
-          // from the effect tag.
-          _next.effectTag &= HostEffectMask;
-          return _next;
-        }
+            if (_next !== null) {
+                stopWorkTimer(workInProgress);
+                if (true && ReactFiberInstrumentation_1.debugTool) {
+                    ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+                }
+                // If completing this work spawned new work, do that next. We'll come
+                // back here again.
+                // Since we're restarting, remove anything that is not a host effect
+                // from the effect tag.
+                _next.effectTag &= HostEffectMask;
+                return _next;
+            }
 
-        if (returnFiber !== null) {
-          // Mark the parent fiber as incomplete and clear its effect list.
-          returnFiber.firstEffect = returnFiber.lastEffect = null;
-          returnFiber.effectTag |= Incomplete;
-        }
+            if (returnFiber !== null) {
+                // Mark the parent fiber as incomplete and clear its effect list.
+                returnFiber.firstEffect = returnFiber.lastEffect = null;
+                returnFiber.effectTag |= Incomplete;
+            }
 
-        if (true && ReactFiberInstrumentation_1.debugTool) {
-          ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
-        }
+            if (true && ReactFiberInstrumentation_1.debugTool) {
+                ReactFiberInstrumentation_1.debugTool.onCompleteWork(workInProgress);
+            }
 
-        if (siblingFiber !== null) {
-          // If there is more work to do in this returnFiber, do that next.
-          return siblingFiber;
-        } else if (returnFiber !== null) {
-          // If there's no more work in this returnFiber. Complete the returnFiber.
-          workInProgress = returnFiber;
-          continue;
-        } else {
-          return null;
+            if (siblingFiber !== null) {
+                // If there is more work to do in this returnFiber, do that next.
+                return siblingFiber;
+            } else if (returnFiber !== null) {
+                // If there's no more work in this returnFiber. Complete the returnFiber.
+                workInProgress = returnFiber;
+                continue;
+            } else {
+                return null;
+            }
         }
-      }
     }
 
     // Without this explicit null return Flow complains of invalid return type
     // TODO Remove the above while(true) loop
     // eslint-disable-next-line no-unreachable
     return null;
-  }
+}
+
+
+function completeWork(current, workInProgress, renderExpirationTime) {
+    var newProps = workInProgress.pendingProps;
+    switch (workInProgress.tag) {
+        case FunctionalComponent:
+            return null;
+        case ClassComponent:
+            {
+                // We are leaving this subtree, so pop context if any.
+                popLegacyContextProvider(workInProgress);
+
+                // If this component caught an error, schedule an error log effect.
+                var instance = workInProgress.stateNode;
+                var updateQueue = workInProgress.updateQueue;
+                if (updateQueue !== null && updateQueue.capturedValues !== null) {
+                    workInProgress.effectTag &= ~DidCapture;
+                    if (typeof instance.componentDidCatch === 'function') {
+                        workInProgress.effectTag |= ErrLog;
+                    } else {
+                        // Normally we clear this in the commit phase, but since we did not
+                        // schedule an effect, we need to reset it here.
+                        updateQueue.capturedValues = null;
+                    }
+                }
+                return null;
+            }
+        case HostRoot:
+            {
+                popHostContainer(workInProgress);
+                popTopLevelLegacyContextObject(workInProgress);
+                var fiberRoot = workInProgress.stateNode;
+                if (fiberRoot.pendingContext) {
+                    fiberRoot.context = fiberRoot.pendingContext;
+                    fiberRoot.pendingContext = null;
+                }
+                if (current === null || current.child === null) {
+                    // If we hydrated, pop so that we can delete any remaining children
+                    // that weren't hydrated.
+                    popHydrationState(workInProgress);
+                    // This resets the hacky state to fix isMounted before committing.
+                    // TODO: Delete this when we delete isMounted and findDOMNode.
+                    workInProgress.effectTag &= ~Placement;
+                }
+                updateHostContainer(workInProgress);
+
+                var _updateQueue = workInProgress.updateQueue;
+                if (_updateQueue !== null && _updateQueue.capturedValues !== null) {
+                    workInProgress.effectTag |= ErrLog;
+                }
+                return null;
+            }
+        case HostComponent:
+            {
+                popHostContext(workInProgress);
+                var rootContainerInstance = getRootHostContainer();
+                var type = workInProgress.type;
+                if (current !== null && workInProgress.stateNode != null) {
+                    // If we have an alternate, that means this is an update and we need to
+                    // schedule a side-effect to do the updates.
+                    var oldProps = current.memoizedProps;
+                    // If we get updated because one of our children updated, we don't
+                    // have newProps so we'll have to reuse them.
+                    // TODO: Split the update API as separate for the props vs. children.
+                    // Even better would be if children weren't special cased at all tho.
+                    var _instance = workInProgress.stateNode;
+                    var currentHostContext = getHostContext();
+                    // TODO: Experiencing an error where oldProps is null. Suggests a host
+                    // component is hitting the resume path. Figure out why. Possibly
+                    // related to `hidden`.
+                    var updatePayload = prepareUpdate(_instance, type, oldProps, newProps, rootContainerInstance, currentHostContext);
+
+                    updateHostComponent(current, workInProgress, updatePayload, type, oldProps, newProps, rootContainerInstance, currentHostContext);
+
+                    if (current.ref !== workInProgress.ref) {
+                        markRef(workInProgress);
+                    }
+                } else {
+                    // 首次插入，生成DOM
+
+                    if (!newProps) {
+                        !(workInProgress.stateNode !== null) ? invariant(false, 'We must have new props for new mounts. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+                        // This can happen when we abort work.
+                        return null;
+                    }
+
+                    var _currentHostContext = getHostContext();
+                    // TODO: Move createInstance to beginWork and keep it on a context
+                    // "stack" as the parent. Then append children as we go in beginWork
+                    // or completeWork depending on we want to add then top->down or
+                    // bottom->up. Top->down is faster in IE11.
+                    var wasHydrated = popHydrationState(workInProgress);
+                    if (wasHydrated) {
+                        // TODO: Move this and createInstance step into the beginPhase
+                        // to consolidate.
+                        if (prepareToHydrateHostInstance(workInProgress, rootContainerInstance, _currentHostContext)) {
+                            // If changes to the hydrated node needs to be applied at the
+                            // commit-phase we mark this as such.
+                            markUpdate(workInProgress);
+                        }
+                    } else {
+                        // 创建dom, createInstance 方法 ./ReactRenderer.js
+                        var _instance2 = createInstance(type, newProps, rootContainerInstance, _currentHostContext, workInProgress);
+
+                        // 依次添加子节点
+                        appendAllChildren(_instance2, workInProgress);
+
+                        // Certain renderers require commit-time effects for initial mount.
+                        // (eg DOM renderer supports auto-focus for certain elements).
+                        // Make sure such renderers get scheduled for later work.
+                        if (finalizeInitialChildren(_instance2, type, newProps, rootContainerInstance, _currentHostContext)) {
+                            markUpdate(workInProgress);
+                        }
+                        workInProgress.stateNode = _instance2;
+                    }
+
+                    if (workInProgress.ref !== null) {
+                        // If there is a ref on a host node we need to schedule a callback
+                        markRef(workInProgress);
+                    }
+                }
+                return null;
+            }
+        case HostText:
+            {
+                var newText = newProps;
+                if (current && workInProgress.stateNode != null) {
+                    var oldText = current.memoizedProps;
+                    // If we have an alternate, that means this is an update and we need
+                    // to schedule a side-effect to do the updates.
+                    updateHostText(current, workInProgress, oldText, newText);
+                } else {
+                    if (typeof newText !== 'string') {
+                        !(workInProgress.stateNode !== null) ? invariant(false, 'We must have new props for new mounts. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+                        // This can happen when we abort work.
+                        return null;
+                    }
+                    var _rootContainerInstance = getRootHostContainer();
+                    var _currentHostContext2 = getHostContext();
+                    var _wasHydrated = popHydrationState(workInProgress);
+                    if (_wasHydrated) {
+                        if (prepareToHydrateHostTextInstance(workInProgress)) {
+                            markUpdate(workInProgress);
+                        }
+                    } else {
+                        workInProgress.stateNode = createTextInstance(newText, _rootContainerInstance, _currentHostContext2, workInProgress);
+                    }
+                }
+                return null;
+            }
+        case CallComponent:
+            return moveCallToHandlerPhase(current, workInProgress, renderExpirationTime);
+        case CallHandlerPhase:
+            // Reset the tag to now be a first phase call.
+            workInProgress.tag = CallComponent;
+            return null;
+        case ReturnComponent:
+            // Does nothing.
+            return null;
+        case ForwardRef:
+            return null;
+        case Fragment:
+            return null;
+        case Mode:
+            return null;
+        case HostPortal:
+            popHostContainer(workInProgress);
+            updateHostContainer(workInProgress);
+            return null;
+        case ContextProvider:
+            // Pop provider fiber
+            popProvider(workInProgress);
+            return null;
+        case ContextConsumer:
+            return null;
+        // Error cases
+        case IndeterminateComponent:
+            invariant(false, 'An indeterminate component should have become determinate before completing. This error is likely caused by a bug in React. Please file an issue.');
+        // eslint-disable-next-line no-fallthrough
+        default:
+            invariant(false, 'Unknown unit of work tag. This error is likely caused by a bug in React. Please file an issue.');
+    }
+}
+
+function completeRoot(root, finishedWork, expirationTime) {
+    // Check if there's a batch that matches this expiration time.
+    var firstBatch = root.firstBatch;
+    if (firstBatch !== null && firstBatch._expirationTime <= expirationTime) {
+        if (completedBatches === null) {
+            completedBatches = [firstBatch];
+        } else {
+            completedBatches.push(firstBatch);
+        }
+        if (firstBatch._defer) {
+            // This root is blocked from committing by a batch. Unschedule it until
+            // we receive another update.
+            root.finishedWork = finishedWork;
+            root.remainingExpirationTime = NoWork;
+            return;
+        }
+    }
+
+    // Commit the root.
+    root.finishedWork = null;
+    root.remainingExpirationTime = commitRoot(finishedWork);
+}
+
+function commitRoot(finishedWork) {
+    isWorking = true;
+    isCommitting = true;
+    startCommitTimer();
+
+    var root = finishedWork.stateNode;
+    !(root.current !== finishedWork) ? invariant(false, 'Cannot commit the same tree as before. This is probably a bug related to the return field. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+    var committedExpirationTime = root.pendingCommitExpirationTime;
+    !(committedExpirationTime !== NoWork) ? invariant(false, 'Cannot commit an incomplete root. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+    root.pendingCommitExpirationTime = NoWork;
+
+    var currentTime = recalculateCurrentTime();
+
+    // Reset this to null before calling lifecycles
+    ReactCurrentOwner.current = null;
+
+    var firstEffect = void 0;
+    if (finishedWork.effectTag > PerformedWork) {
+        // A fiber's effect list consists only of its children, not itself. So if
+        // the root has an effect, we need to add it to the end of the list. The
+        // resulting list is the set that would belong to the root's parent, if
+        // it had one; that is, all the effects in the tree including the root.
+
+        // fiber 的副作用链仅包括子节点的副作用，并不包含它自己。如果fiberRoot也包含一个副作用，将它添加到副作用链的末尾
+        if (finishedWork.lastEffect !== null) {
+            finishedWork.lastEffect.nextEffect = finishedWork;
+            firstEffect = finishedWork.firstEffect;
+        } else {
+            firstEffect = finishedWork;
+        }
+    } else {
+        // There is no effect on the root.
+        firstEffect = finishedWork.firstEffect;
+    }
+
+    // dom 更新之前 保存事件状态
+    prepareForCommit(root.containerInfo);
+
+    // Invoke instances of getSnapshotBeforeUpdate before mutation.
+    nextEffect = firstEffect;
+    startCommitSnapshotEffectsTimer();
+    while (nextEffect !== null) {
+        var didError = false;
+        var error = void 0;
+        {
+            // 调用 commitBeforeMutationLifecycles，下面定义
+            invokeGuardedCallback$2(null, commitBeforeMutationLifecycles, null);
+            if (hasCaughtError()) {
+                didError = true;
+                error = clearCaughtError();
+            }
+        }
+        if (didError) {
+            !(nextEffect !== null) ? invariant(false, 'Should have next effect. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+            onCommitPhaseError(nextEffect, error);
+            // Clean-up
+            if (nextEffect !== null) {
+                nextEffect = nextEffect.nextEffect;
+            }
+        }
+    }
+    stopCommitSnapshotEffectsTimer();
+
+    // Commit all the side-effects within a tree. We'll do this in two passes.
+    // The first pass performs all the host insertions, updates, deletions and
+    // ref unmounts.
+
+    // 两次遍历 side-effects tree
+    // 第一次处理dom的插入，更新，删除以及 unmounts ref  (删除时会触发 componentWillUnmount钩子)
+    nextEffect = firstEffect;
+    startCommitHostEffectsTimer();
+    while (nextEffect !== null) {
+        var _didError = false;
+        var _error = void 0;
+        {
+            invokeGuardedCallback$2(null, commitAllHostEffects, null);
+            if (hasCaughtError()) {
+                _didError = true;
+                _error = clearCaughtError();
+            }
+        }
+        if (_didError) {
+            !(nextEffect !== null) ? invariant(false, 'Should have next effect. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+            onCommitPhaseError(nextEffect, _error);
+            // Clean-up
+            if (nextEffect !== null) {
+                nextEffect = nextEffect.nextEffect;
+            }
+        }
+    }
+    stopCommitHostEffectsTimer();
+
+    // 恢复事件状态
+    resetAfterCommit(root.containerInfo);
+
+    // The work-in-progress tree is now the current tree. This must come after
+    // the first pass of the commit phase, so that the previous tree is still
+    // current during componentWillUnmount, but before the second pass, so that
+    // the finished work is current during componentDidMount/Update.
+    root.current = finishedWork;
+
+    // In the second pass we'll perform all life-cycles and ref callbacks.
+    // Life-cycles happen as a separate pass so that all placements, updates,
+    // and deletions in the entire tree have already been invoked.
+    // This pass also triggers any renderer-specific initial effects.
+
+    // 第二次运行时，所有的dom修改都已经完成(增，删，改),触发相应的钩子函数 componentDidMount componentDidUpdate ，或者处理 input 元素的自动聚焦等副作用
+
+    nextEffect = firstEffect;
+    startCommitLifeCyclesTimer();
+    while (nextEffect !== null) {
+        var _didError2 = false;
+        var _error2 = void 0;
+        {
+            // 调用生命周期钩子
+            invokeGuardedCallback$2(null, commitAllLifeCycles, null, root, currentTime, committedExpirationTime);
+            if (hasCaughtError()) {
+                _didError2 = true;
+                _error2 = clearCaughtError();
+            }
+        }
+        if (_didError2) {
+            !(nextEffect !== null) ? invariant(false, 'Should have next effect. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+            onCommitPhaseError(nextEffect, _error2);
+            if (nextEffect !== null) {
+                nextEffect = nextEffect.nextEffect;
+            }
+        }
+    }
+
+    // 提交阶段完成，本次任务完成
+    isCommitting = false;
+    isWorking = false;
+    stopCommitLifeCyclesTimer();
+    stopCommitTimer();
+
+    // onCommitRoot 钩子执行
+    if (typeof onCommitRoot === 'function') {
+        onCommitRoot(finishedWork.stateNode);
+    }
+    if (true && ReactFiberInstrumentation_1.debugTool) {
+        ReactFiberInstrumentation_1.debugTool.onCommitWork(finishedWork);
+    }
+
+    var remainingTime = root.current.expirationTime;
+    if (remainingTime === NoWork) {
+        // If there's no remaining work, we can clear the set of already failed
+        // error boundaries.
+        legacyErrorBoundariesThatAlreadyFailed = null;
+    }
+    return remainingTime;
+}
+
+
+function commitBeforeMutationLifecycles() {
+
+    // 依次调用 组件树的 getSnapshotBeforeUpdate 钩子函数
+    while (nextEffect !== null) {
+        var effectTag = nextEffect.effectTag;
+
+        if (effectTag & Snapshot) {
+            //记录提交次数
+            recordEffect();
+
+            var current = nextEffect.alternate;
+            _commitBeforeMutationLifeCycles(current, nextEffect);
+        }
+
+        // Don't cleanup effects yet;
+        // This will be done by commitAllLifeCycles()
+        nextEffect = nextEffect.nextEffect;
+    }
+}
+
+function _commitBeforeMutationLifeCycles(current, finishedWork) {
+    switch (finishedWork.tag) {
+        case ClassComponent:
+            {
+                if (finishedWork.effectTag & Snapshot) {
+                    if (current !== null) {
+                        var prevProps = current.memoizedProps;
+                        var prevState = current.memoizedState;
+
+                        // currentPhaseFiber = fiber;currentPhase = phase;
+                        startPhaseTimer(finishedWork, 'getSnapshotBeforeUpdate');
+
+                        var _instance = finishedWork.stateNode;
+                        _instance.props = finishedWork.memoizedProps;
+                        _instance.state = finishedWork.memoizedState;
+
+                        // 调用组件实例实例的getSnapshotBeforeUpdate钩子
+                        var snapshot = _instance.getSnapshotBeforeUpdate(prevProps, prevState);
+                        {
+                            var didWarnSet = didWarnAboutUndefinedSnapshotBeforeUpdate;
+                            if (snapshot === undefined && !didWarnSet.has(finishedWork.type)) {
+                                didWarnSet.add(finishedWork.type);
+                                warning(false, '%s.getSnapshotBeforeUpdate(): A snapshot value (or null) ' + 'must be returned. You have returned undefined.', getComponentName(finishedWork));
+                            }
+                        }
+
+                        // 将钩子执行结果添加给组件实例，作为componentDidUpdate钩子函数的第三个参数
+                        _instance.__reactInternalSnapshotBeforeUpdate = snapshot;
+                        stopPhaseTimer();
+                    }
+                }
+                return;
+            }
+        case HostRoot:
+        case HostComponent:
+        case HostText:
+        case HostPortal:
+            // Nothing to do for these component types
+            return;
+        default:
+            {
+                invariant(false, 'This unit of work tag should not have side-effects. This error is likely caused by a bug in React. Please file an issue.');
+            }
+    }
+}
+
+// 处理所有的 host effects
+function commitAllHostEffects() {
+    while (nextEffect !== null) {
+        {
+            ReactDebugCurrentFiber.setCurrentFiber(nextEffect);
+        }
+        recordEffect();
+
+        var effectTag = nextEffect.effectTag;
+
+        if (effectTag & ContentReset) {
+            // 清空 content
+            commitResetTextContent(nextEffect);
+        }
+
+        if (effectTag & Ref) {
+            // 解绑 ref
+            var current = nextEffect.alternate;
+            if (current !== null) {
+                commitDetachRef(current);
+            }
+        }
+
+        // The following switch statement is only concerned about placement,
+        // updates, and deletions. To avoid needing to add a case for every
+        // possible bitmap value, we remove the secondary effects from the
+        // effect tag and switch on that value.
+        var primaryEffectTag = effectTag & (Placement | Update | Deletion);
+        switch (primaryEffectTag) {
+            case Placement:
+                {
+                    // 插入dom
+                    commitPlacement(nextEffect);
+                    // Clear the "placement" from effect tag so that we know that this is inserted, before
+                    // any life-cycles like componentDidMount gets called.
+                    // TODO: findDOMNode doesn't rely on this any more but isMounted
+                    // does and isMounted is deprecated anyway so we should be able
+                    // to kill this.
+                    nextEffect.effectTag &= ~Placement;
+                    break;
+                }
+            case PlacementAndUpdate:
+                {
+                    // Placement
+                    commitPlacement(nextEffect);
+                    // Clear the "placement" from effect tag so that we know that this is inserted, before
+                    // any life-cycles like componentDidMount gets called.
+                    nextEffect.effectTag &= ~Placement;
+
+                    // Update
+                    var _current = nextEffect.alternate;
+                    // 更新DOM updateProperties(domElement, updatePayload, type, oldProps, newProps) (更改dom属性 文本节点内容等) 以及修改 node[internalEventHandlersKey] = props 追踪事件
+                    commitWork(_current, nextEffect);
+                    break;
+                }
+            case Update:
+                {
+                    var _current2 = nextEffect.alternate;
+                    commitWork(_current2, nextEffect);
+                    break;
+                }
+            case Deletion:
+                {
+                    // Recursively delete all host nodes from the parent.
+                    // Detach refs and call componentWillUnmount() on the whole subtree.
+                    // 递归删除dom，清除 ref ，触发 componentWillUnmount() 钩子
+                    commitDeletion(nextEffect);
+                    break;
+                }
+        }
+        nextEffect = nextEffect.nextEffect;
+    }
+
+    {
+        ReactDebugCurrentFiber.resetCurrentFiber();
+    }
+}
+
+function commitAllLifeCycles(finishedRoot, currentTime, committedExpirationTime) {
+    {
+        ReactStrictModeWarnings.flushPendingUnsafeLifecycleWarnings();
+
+        if (warnAboutDeprecatedLifecycles) {
+            ReactStrictModeWarnings.flushPendingDeprecationWarnings();
+        }
+    }
+    while (nextEffect !== null) {
+        var effectTag = nextEffect.effectTag;
+
+        if (effectTag & (Update | Callback)) {
+            recordEffect();
+            var current = nextEffect.alternate;
+            // 按照副作用链依次触发 componentDidMount 或 componentDidUpdate生命周期函数 
+            commitLifeCycles(finishedRoot, current, nextEffect, currentTime, committedExpirationTime);
+        }
+
+        if (effectTag & ErrLog) {
+            commitErrorLogging(nextEffect, onUncaughtError);
+        }
+
+        if (effectTag & Ref) {
+            recordEffect();
+            commitAttachRef(nextEffect);
+        }
+
+        var next = nextEffect.nextEffect;
+        // Ensure that we clean these up so that we don't accidentally keep them.
+        // I'm not actually sure this matters because we can't reset firstEffect
+        // and lastEffect since they're on every node, not just the effectful
+        // ones. So we have to clean everything as we reuse nodes anyway.
+        nextEffect.nextEffect = null;
+        // Ensure that we reset the effectTag here so that we can rely on effect
+        // tags to reason about the current life-cycle.
+        nextEffect = next;
+    }
+}
+
+function commitLifeCycles(finishedRoot, current, finishedWork, currentTime, committedExpirationTime) {
+    switch (finishedWork.tag) {
+        case ClassComponent:
+            {
+                var _instance2 = finishedWork.stateNode;
+                if (finishedWork.effectTag & Update) {
+                    if (current === null) {
+                        startPhaseTimer(finishedWork, 'componentDidMount');
+                        _instance2.props = finishedWork.memoizedProps;
+                        _instance2.state = finishedWork.memoizedState;
+                        // componentDidMount 钩子
+                        _instance2.componentDidMount();
+                        stopPhaseTimer();
+                    } else {
+                        var prevProps = current.memoizedProps;
+                        var prevState = current.memoizedState;
+                        startPhaseTimer(finishedWork, 'componentDidUpdate');
+                        _instance2.props = finishedWork.memoizedProps;
+                        _instance2.state = finishedWork.memoizedState;
+
+                        // componentDidUpdate 钩子
+                        _instance2.componentDidUpdate(prevProps, prevState, _instance2.__reactInternalSnapshotBeforeUpdate);
+                        stopPhaseTimer();
+                    }
+                }
+                var updateQueue = finishedWork.updateQueue;
+                if (updateQueue !== null) {
+                    // 依次调用updateQueue的回调函数，this指向组件实例
+                    commitCallbacks(updateQueue, _instance2);
+                }
+                return;
+            }
+        case HostRoot:
+            {
+                var _updateQueue = finishedWork.updateQueue;
+                if (_updateQueue !== null) {
+                    var _instance3 = null;
+                    if (finishedWork.child !== null) {
+                        switch (finishedWork.child.tag) {
+                            case HostComponent:
+                                _instance3 = getPublicInstance(finishedWork.child.stateNode);
+                                break;
+                            case ClassComponent:
+                                _instance3 = finishedWork.child.stateNode;
+                                break;
+                        }
+                    }
+                    // 调用hostRoot回调函数，即reactDOM.render中的回调函数，并将this指向根元素 (App组件实例，或 根级的 DOM)
+                    commitCallbacks(_updateQueue, _instance3);
+                }
+                return;
+            }
+        case HostComponent:
+            {
+                var _instance4 = finishedWork.stateNode;
+
+                // Renderers may schedule work to be done after host components are mounted
+                // (eg DOM renderer may schedule auto-focus for inputs and form controls).
+                // These effects should only be committed when components are first mounted,
+                // aka when there is no current/alternate.
+                if (current === null && finishedWork.effectTag & Update) {
+                    var type = finishedWork.type;
+                    var props = finishedWork.memoizedProps;
+                    // input 元素的自动聚焦等属性，需在插入dom完成之后执行
+                    commitMount(_instance4, type, props, finishedWork);
+                }
+
+                return;
+            }
+        case HostText:
+            {
+                // We have no life-cycles associated with text.
+                return;
+            }
+        case HostPortal:
+            {
+                // We have no life-cycles associated with portals.
+                return;
+            }
+        default:
+            {
+                invariant(false, 'This unit of work tag should not have side-effects. This error is likely caused by a bug in React. Please file an issue.');
+            }
+    }
+}
+
+function scheduleCallbackWithExpiration(expirationTime) {
+    if (callbackExpirationTime !== NoWork) {
+        // A callback is already scheduled. Check its expiration time (timeout).
+        if (expirationTime > callbackExpirationTime) {
+            // 已经超过的callback的过期时间，说明callback已经调度过了
+            // Existing callback has sufficient timeout. Exit.
+            return;
+        } else {
+            // Existing callback has insufficient timeout. Cancel and schedule a
+            // new one.
+
+            // 回调还没有超时，将当前任务推后执行
+            // cancelIdleCallback 先取消空闲回调
+            cancelDeferredCallback(callbackID);
+        }
+        // The request callback timer is already running. Don't start a new one.
+    } else {
+        // callbackExpirationTime 为空并且还有剩余任务，说明是异步任务,处理如下
+        // isWaitingForCallback = true;beginMark('(Waiting for async callback...)');
+
+        startRequestCallbackTimer();
+    }
+
+    // Compute a timeout for the given expiration time.
+    var currentMs = now() - originalStartTimeMs;
+    var expirationMs = expirationTimeToMs(expirationTime);
+    var timeout = expirationMs - currentMs;
+
+    callbackExpirationTime = expirationTime;
+
+    // requestIdleCallback 设置新的空闲时间同步任务回调
+    callbackID = scheduleDeferredCallback(performAsyncWork, { timeout: timeout });
+}
+
+// 结束渲染
+function finishRendering() {
+    nestedUpdateCount = 0;
+
+    // 如果存在complete批处理，执行
+    if (completedBatches !== null) {
+        var batches = completedBatches;
+        completedBatches = null;
+        for (var i = 0; i < batches.length; i++) {
+            var batch = batches[i];
+            try {
+                batch._onComplete();
+            } catch (error) {
+                if (!hasUnhandledError) {
+                    hasUnhandledError = true;
+                    unhandledError = error;
+                }
+            }
+        }
+    }
+
+    if (hasUnhandledError) {
+        var error = unhandledError;
+        unhandledError = null;
+        hasUnhandledError = false;
+        throw error;
+    }
+}

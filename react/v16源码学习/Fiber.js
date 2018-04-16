@@ -131,7 +131,7 @@ export type Fiber = {
     // fiber对应的function/class/module类型组件名.
     type: any,
 
-    // fiber所在组件树的根组件FiberRoot对象或者组件实例
+    // fiber所在组件树的根组件FiberRoot对象或者组件实例,如果tag 为 3，即根级container， stateNode 是 fiberRoot ， 如果 tag 为 2，即类组件，stateNode是组件实例，如果tag 为 5，即 HostComponent，原生DOM组件(render 函数中返回的根级DOM等)，stateNode是DOM节点
     stateNode: any,
     // 处理完当前fiber后返回的fiber，
     // 返回当前fiber所在fiber树的父级fiber实例

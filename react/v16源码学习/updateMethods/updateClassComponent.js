@@ -10,7 +10,10 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
       if (workInProgress.stateNode === null) {
         // In the initial pass we might need to construct the instance.
         // ../ClassInstance.js
+        // 实例化组件并调用 getDerivedPropsFromState生命周期钩子，生成 workInProgress.memoizedState
         constructClassInstance(workInProgress, workInProgress.pendingProps);
+
+        // 添加 instance state props refs context 并调用 componentWillUpdate 钩子，如果钩子当中有setState操作，解析操作，得到新的state
         mountClassInstance(workInProgress, renderExpirationTime);
 
         shouldUpdate = true;
@@ -36,6 +39,7 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
 
   function finishClassComponent(current, workInProgress, shouldUpdate, hasContext, didCaptureError, renderExpirationTime) {
     // Refs should update even if shouldComponentUpdate returns false
+    // ref 相关
     markRef(current, workInProgress);
 
     if (!shouldUpdate && !didCaptureError) {
@@ -51,6 +55,7 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
     var instance = workInProgress.stateNode;
 
     // Rerender
+    // 渲染组件
     ReactCurrentOwner.current = workInProgress;
     var nextChildren = void 0;
     if (didCaptureError && (!enableGetDerivedStateFromCatch || typeof ctor.getDerivedStateFromCatch !== 'function')) {
@@ -63,6 +68,8 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
     } else {
       {
         ReactDebugCurrentFiber.setCurrentPhase('render');
+
+        // 调用 组件的render方法
         nextChildren = instance.render();
         if (debugRenderPhaseSideEffects || debugRenderPhaseSideEffectsForStrictMode && workInProgress.mode & StrictMode) {
           instance.render();
@@ -82,6 +89,8 @@ function updateClassComponent(current, workInProgress, renderExpirationTime) {
       // remounting all children regardless of whether their their
       // identity matches.
     }
+
+    // 调节更新
     reconcileChildrenAtExpirationTime(current, workInProgress, nextChildren, renderExpirationTime);
     // Memoize props and state using the values we just used to render.
     // TODO: Restructure so we never read values from the instance.
