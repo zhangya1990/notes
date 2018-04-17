@@ -746,7 +746,7 @@ function completeUnitOfWork(workInProgress) {
                 // reusing children we'll schedule this effect onto itself since we're
                 // at the end.
 
-                // 如果当前的fiber本身也包含副作用，将fiber添加到子级副作用连的末尾
+                // 如果当前的fiber本身也包含副作用，将fiber添加到副作用连的末尾
                 var effectTag = workInProgress.effectTag;
                 // Skip both NoWork and PerformedWork tags when creating the effect list.
                 // PerformedWork effect is read by React DevTools but shouldn't be committed.
