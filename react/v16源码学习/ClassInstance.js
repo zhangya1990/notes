@@ -520,7 +520,9 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       var newUnmaskedContext = getUnmaskedContext(workInProgress);
       var newContext = getMaskedContext(workInProgress, newUnmaskedContext);
   
+      // 如果存在新的生命周期钩子，部分旧的钩子函数将不会调用(componentWillMount UNSAFE_componentWillMount componentWillReceiveProps componentWillUpdate UNSAFE_componentWillUpdate)
       var hasNewLifecycles = typeof ctor.getDerivedStateFromProps === 'function' || typeof instance.getSnapshotBeforeUpdate === 'function';
+      
   
       // Note: During these life-cycles, instance.props/instance.state are what
       // ever the previously attempted to render - not the "current". However,
@@ -530,6 +532,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       // Unsafe lifecycles should not be invoked for components using the new APIs.
       if (!hasNewLifecycles && (typeof instance.UNSAFE_componentWillReceiveProps === 'function' || typeof instance.componentWillReceiveProps === 'function')) {
         if (oldProps !== newProps || oldContext !== newContext) {
+          // 调用 componentWillReceiveProps 钩子
+
           callComponentWillReceiveProps(workInProgress, instance, newProps, newContext);
         }
       }
@@ -541,6 +545,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       var derivedStateFromCatch = void 0;
   
       if (workInProgress.updateQueue !== null) {
+
+        // 解析 updateQueue 生成新的partialState
         newState = processUpdateQueue(current, workInProgress, workInProgress.updateQueue, instance, newProps, renderExpirationTime);
   
         var updateQueue = workInProgress.updateQueue;
@@ -550,6 +556,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
           // finishClassComponent. Do the reset there.
           // TODO: This is awkward. Refactor class components.
           // updateQueue.capturedValues = null;
+
+          // 解析更新过程中出现错误，调用 getDerivedStateFromCatch 钩子
           derivedStateFromCatch = callGetDerivedStateFromCatch(ctor, capturedValues);
         }
       } else {
@@ -560,9 +568,12 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
       if (oldProps !== newProps) {
         // The prevState parameter should be the partially updated state.
         // Otherwise, spreading state in return values could override updates.
+
+        // 如果新的属性不同，调用 getDerivedStateFromProps 钩子
         derivedStateFromProps = callGetDerivedStateFromProps(workInProgress, instance, newProps, newState);
       }
   
+      // 合并各种 partialState ，生成新的state
       if (derivedStateFromProps !== null && derivedStateFromProps !== undefined) {
         // Render-phase updates (like this) should not be added to the update queue,
         // So that multiple render passes do not enqueue multiple updates.
@@ -592,6 +603,7 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
         return false;
       }
   
+      // 调用 ShouldComponentUpdate 
       var shouldUpdate = checkShouldComponentUpdate(workInProgress, oldProps, newProps, oldState, newState, newContext);
   
       if (shouldUpdate) {
@@ -600,9 +612,13 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
         if (!hasNewLifecycles && (typeof instance.UNSAFE_componentWillUpdate === 'function' || typeof instance.componentWillUpdate === 'function')) {
           startPhaseTimer(workInProgress, 'componentWillUpdate');
           if (typeof instance.componentWillUpdate === 'function') {
+
+            // componentWillUpdate 钩子
             instance.componentWillUpdate(newProps, newState, newContext);
           }
           if (typeof instance.UNSAFE_componentWillUpdate === 'function') {
+
+            // UNSAFE_componentWillUpdate 钩子
             instance.UNSAFE_componentWillUpdate(newProps, newState, newContext);
           }
           stopPhaseTimer();
@@ -635,6 +651,8 @@ var ReactFiberClassComponent = function (legacyContext, scheduleWork, computeExp
   
       // Update the existing instance's state, props, and context pointers even
       // if shouldComponentUpdate returns false.
+
+      // 更新组件的状态
       instance.props = newProps;
       instance.state = newState;
       instance.context = newContext;

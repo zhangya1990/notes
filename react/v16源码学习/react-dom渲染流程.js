@@ -101,11 +101,21 @@
 
             ==> updateClassComponent(current, workInProgress, renderExpirationTime)
             如果是class组件 fiber
-            
-                constructClassInstance(workInProgress, workInProgress.pendingProps)
-                实例化组件，触发 getDerivedStateFromProps 组件静态方法
-                mountClassInstance(workInProgress, renderExpirationTime)
-                插入组件实例，初始化组件实例的 state，props，refs，context，{{如果满足条件，(没有getDerivedStateFromProps和getSnapshotBeforeUpdate钩子函数，这两个新的生命周期函数不能和componentWillMount，componentWillUpdate以及对应的unsafe版本，同时使用) 依次触发 componentWillMount UNSAFE_componentWillMount生命周期钩子函数，在此期间，如果有额外的状态更新(setState),添加到当前workInProgress的updateQueue中，componentWillMount执行完成后，解析 updateQueue ，生成新的state，并挂载在组件实例上}},调用 render 方法，生成react element，并生成相应的fiber 子节点插入树中
+                首次插入
+                    constructClassInstance(workInProgress, workInProgress.pendingProps)
+                    实例化组件，触发 getDerivedStateFromProps 组件静态方法
+                    mountClassInstance(workInProgress, renderExpirationTime)
+                    插入组件实例，初始化组件实例的 state，props，refs，context，{{如果满足条件，(没有getDerivedStateFromProps和getSnapshotBeforeUpdate钩子函数，这两个新的生命周期函数不能和componentWillMount，componentWillUpdate以及对应的unsafe版本，同时使用) 依次触发 componentWillMount UNSAFE_componentWillMount生命周期钩子函数，在此期间，如果有额外的状态更新(setState),添加到当前workInProgress的updateQueue中，componentWillMount执行完成后，解析 updateQueue ，生成新的state，并挂载在组件实例上}},调用 render 方法，生成react element，并生成相应的fiber 子节点插入树中
+
+                更新
+                    updateClassInstance(current, workInProgress, renderExpirationTime)
+                    首先触发组件实例的 componentWillReceiveProps 钩子
+                    processUpdateQueue 生成新的 partialState
+                    触发 getDerivedStateFromProps 钩子，生成新的partialState，并合并
+                    如果在解析updateQueue过程中发生错误，触发 getDerivedStateFromCatch 钩子，生成新的partialState，并合并
+                    checkShouldComponentUpdate(workInProgress, oldProps, newProps, oldState, newState, newContext) ，如果是PureReactComponent实例，浅比较 {!shallowEqual(oldProps, newProps) || !shallowEqual(oldState, newState)}，否则如果存在 shouldComponentUpdate(newProps, newState, newContext) ，检测是否更新，不存在默认更新
+                    依次触发 componentWillUpdate(newProps, newState, newContext)  UNSAFE_componentWillUpdate(newProps, newState, newContext)，如果同时存在，传入的参数相同
+                    更新组件状态 ( props state context ) 即使 shouldComponentUpdate 返回false
 
             ==> updateHostComponent(current, workInProgress, renderExpirationTime)
             如果是 host 组件 fiber，如果 workInProgress.pendingProps 存在children属性(DOM属性渲染子节点)，继续调和 children 节点，生成相应的 fiber，否则 fiber树生成完成， 返回null 
@@ -114,11 +124,62 @@
 
     提交阶段
 
-        // 遍历副作用树，完成组件的插入，更新，及各阶段的生命周期函数的调用
+        // 遍历副作用链(即fiber树)，完成组件的插入，更新，及各阶段的生命周期函数的调用
         commitRoot(finishedWork)
 
         // 第一次遍历，依次调用组件的 getSnapshotBeforeUpdate 钩子函数
         // 第二次遍历，处理dom的插入，更新，删除以及 unmounts ref  (删除时会触发 componentWillUnmount钩子)
         // 第三次遍历, 依次调用组件的生命周期钩子(componentDidMount componentDidUpdate),需要注意的是，在 componentDidMount 钩子当中，本次调度实际上还没有完成，因此在其中多次调用 setState 会添加到当前fiber的updateQueue中，componentDidMount执行完成之后，会立即调用 setState中的回调函数，处理完成之后，会调用ReactDOM.render中的回调函数。
+
+*/
+
+
+//生命周期详解及表现
+/* 
+    
+    // 首次插入
+
+        // 调和阶段
+        getDerivedStateFromProps 
+        componentWillMount
+        UNSAFE_componentWillMount
+        processUpdateQueue  如果在以上生命周期当中有setState操作，会在此时解析更新，并赋值给 instance.state
+        render函数,因为上一步解析了updateQueue，所以在componentWillComponent中执行同步setState操作，render函数中可以拿到最新的state
+
+        // DOM插入完成之后
+        componentDidMount 在当前阶段使用setState修改状态，会添加到当前fiber的updateQueue中，进而影响fiber的过期时间，本次调度完成之后继续下一次调度处理更新
+        updateQueue.callbackList中的回调函数执行（processUpdateQueue解析之前的生命周期中添加的setState中的回调函数，）
+        
+        fiber树全部插入到dom中之后
+        触发ReactDOM.render中的回调函数
+
+
+    // 更新
+        
+        // 调和阶段
+        componentWillReceiveProps
+        UNSAFE_componentWillReceiveProps
+        processUpdateQueue(非生命周期钩子)，此时解析的是上一次调度完成之后，根据对应fiber新建的workInProgress，因为上个周期已经处理完componentWillMount中的更新，本次周期尚未触发componentWillUpdate，所以这里只能解析componentDidMount或者componentWillReceiveProps中设置的setState，将其中的回调函数添加到updateQueue.callbackList中
+        getDerivedStateFromProps 
+        如果在processUpdateQueue阶段发生错误触发 getDerivedStateFromCatch 
+        注：以上阶段合并生成新的state
+        checkShouldComponentUpdate
+        componentWillUpdate
+        UNSAFE_componentWillUpdate
+        render函数
+
+        //提交更新阶段
+        getSnapshotBeforeUpdate
+
+        // DOM处理阶段
+        componentWillUnmount
+
+        // DOM处理完成之后
+        componentDidUpdate 不要在这里调用 setState - -
+        updateQueue.callbackList中的回调函数执行
+        
+        fiber树全部更新到dom中之后
+        触发ReactDOM.render中的回调函数
+
 
 */

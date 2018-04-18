@@ -21,9 +21,12 @@ function updateHostRoot(current, workInProgress, renderExpirationTime) {
     } else if (prevState === state) {
       // If the state is the same as before, that's a bailout because we had
       // no work that expires at this time.
+
+      // 跟新的时候如果发现state相同，克隆所有的子节点
       resetHydrationState();
       return bailoutOnAlreadyFinishedWork(current, workInProgress);
     } else {
+      // 首次插入的时候
       element = state.element;
     }
     var root = workInProgress.stateNode;
@@ -275,4 +278,34 @@ function placeSingleChild(newFiber) {
     newFiber.effectTag = Placement;
   }
   return newFiber;
+}
+
+
+function bailoutOnAlreadyFinishedWork(current, workInProgress) {
+  cancelWorkTimer(workInProgress);
+
+  // 克隆所有的子节点
+  cloneChildFibers(current, workInProgress);
+  return workInProgress.child;
+}
+
+
+function cloneChildFibers(current, workInProgress) {
+  !(current === null || workInProgress.child === current.child) ? invariant(false, 'Resuming work not yet implemented.') : void 0;
+
+  if (workInProgress.child === null) {
+    return;
+  }
+
+  var currentChild = workInProgress.child;
+  var newChild = createWorkInProgress(currentChild, currentChild.pendingProps, currentChild.expirationTime);
+  workInProgress.child = newChild;
+
+  newChild['return'] = workInProgress;
+  while (currentChild.sibling !== null) {
+    currentChild = currentChild.sibling;
+    newChild = newChild.sibling = createWorkInProgress(currentChild, currentChild.pendingProps, currentChild.expirationTime);
+    newChild['return'] = workInProgress;
+  }
+  newChild.sibling = null;
 }

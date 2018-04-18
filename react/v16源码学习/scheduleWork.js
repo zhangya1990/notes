@@ -421,8 +421,10 @@ function renderRoot(root, expirationTime, isAsync) {
         return null;
     } else if (nextUnitOfWork === null) {
         // We reached the root.
+        // 当所有的任务单元都处理完成之后，如果满足提交条件，提交当前的workInProgress
         if (isRootReadyForCommit) {
             // The root successfully completed. It's ready for commit.
+
             root.pendingCommitExpirationTime = expirationTime;
             var finishedWork = root.current.alternate;
             return finishedWork;
@@ -616,7 +618,7 @@ function performUnitOfWork(workInProgress) {
     if (next === null) {
         // If this doesn't spawn new work, complete the current work.
 
-        // 如果没有子级的fiber，完成当前任务
+        // 如果没有子级的fiber，完成当前任务，当前fiber完成之后，如果还有兄弟节点，继续处理兄弟节点
         next = completeUnitOfWork(workInProgress);
     }
 
@@ -766,7 +768,7 @@ function completeUnitOfWork(workInProgress) {
 
             if (siblingFiber !== null) {
                 // If there is more work to do in this returnFiber, do that next.
-                // 如果有兄弟节点，将兄弟节点的副作用也按顺序添加到副作用连末尾
+                // 如果有兄弟节点，继续处理兄弟节点
                 return siblingFiber;
             } else if (returnFiber !== null) {
                 // If there's no more work in this returnFiber. Complete the returnFiber.
