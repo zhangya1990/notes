@@ -114,6 +114,7 @@ function insertUpdateIntoFiber(fiber, update) {
     // because of structural sharing. So, we should only append to one of
     // the lists.
     // 如果2个更新队列均非空，则添加更新至第一个队列，并更新另一个队列的尾部更新项
+    // 2个更新队列均非空，说明本次调度过程中，至少已经添加了两次以上(前两次添加会满足前面的条件),然后就不明白了，什么鬼东西
     insertUpdateIntoQueue(queue1, update);
     // But we still need to update the `last` pointer of queue2.
     queue2.last = update;
