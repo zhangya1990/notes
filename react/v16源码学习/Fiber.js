@@ -184,6 +184,8 @@ export type Fiber = {
     // 当前fiber的替换版本是其work-in-progress，work-in-progress的交替版本是当前fiber；
     // 当work-in-progress更新一次后，将同步至当前fiber，然后继续处理，同步直至任务完成；
     // work-in-progress指向处理过程中的fiber，而当前fiber总是维护处理完成的最新版本的fiber。
+
+    // 关于workInProgress的创建时机，首次渲染的时候，在创建完fiberRoot之后，会创建当前fiberRoot对应的rootFiber的workInProgress，此后在渲染的过程中，生成的所有子孙级fiber都不会生成相应的alternate，级workInProgress,也就是说，在初次渲染完成之后，如果没有额外的更新，只有rootFiber存在alternate，检测到更新之后，只有在更新当前fiber的时候，才会创建相应的alternate { cloneChildFibers方法或者useFiber方法 }
     alternate: Fiber | null,
 };
 

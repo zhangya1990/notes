@@ -373,6 +373,7 @@ function renderRoot(root, expirationTime, isAsync) {
 
     do {
         try {
+            // 解析当前的workInProgress，生成dom树，并挂载属性，添加事件(并没有插入到document中)
             workLoop(isAsync);
         } catch (thrownValue) {
             if (nextUnitOfWork === null) {
@@ -618,7 +619,7 @@ function performUnitOfWork(workInProgress) {
     if (next === null) {
         // If this doesn't spawn new work, complete the current work.
 
-        // 如果没有子级的fiber，完成当前任务，当前fiber完成之后，如果还有兄弟节点，继续处理兄弟节点
+        // 如果没有子级的fiber，完成当前任务，生成DOM树，当前fiber完成之后，如果还有兄弟节点，继续处理兄弟节点
         next = completeUnitOfWork(workInProgress);
     }
 
@@ -899,6 +900,8 @@ function completeWork(current, workInProgress, renderExpirationTime) {
                 if (current !== null && workInProgress.stateNode != null) {
                     // If we have an alternate, that means this is an update and we need to
                     // schedule a side-effect to do the updates.
+
+                    // 解析 HostComponent 更新
                     var oldProps = current.memoizedProps;
                     // If we get updated because one of our children updated, we don't
                     // have newProps so we'll have to reuse them.
@@ -909,15 +912,18 @@ function completeWork(current, workInProgress, renderExpirationTime) {
                     // TODO: Experiencing an error where oldProps is null. Suggests a host
                     // component is hitting the resume path. Figure out why. Possibly
                     // related to `hidden`.
+
+                    // 预处理更新，生成 updatePayload
                     var updatePayload = prepareUpdate(_instance, type, oldProps, newProps, rootContainerInstance, currentHostContext);
 
-                    updateHostComponent(current, workInProgress, updatePayload, type, oldProps, newProps, rootContainerInstance, currentHostContext);
+                    // 将updatePayload 挂载到 workInProgress.updateQueue上，在最终的提交阶段处理dom更新
+                    updateCurHostComponent(current, workInProgress, updatePayload, type, oldProps, newProps, rootContainerInstance, currentHostContext);
 
                     if (current.ref !== workInProgress.ref) {
                         markRef(workInProgress);
                     }
                 } else {
-                    // 首次插入，生成DOM
+                    // 首次渲染，生成DOM,但并没有插入文档中，在最终的完成阶段才会插入文档
 
                     if (!newProps) {
                         !(workInProgress.stateNode !== null) ? invariant(false, 'We must have new props for new mounts. This error is likely caused by a bug in React. Please file an issue.') : void 0;
@@ -949,6 +955,7 @@ function completeWork(current, workInProgress, renderExpirationTime) {
                         // Certain renderers require commit-time effects for initial mount.
                         // (eg DOM renderer supports auto-focus for certain elements).
                         // Make sure such renderers get scheduled for later work.
+                        // 添加dom属性，事件等 ./ReactRenderer.js
                         if (finalizeInitialChildren(_instance2, type, newProps, rootContainerInstance, _currentHostContext)) {
                             markUpdate(workInProgress);
                         }
@@ -1042,6 +1049,7 @@ function completeRoot(root, finishedWork, expirationTime) {
     }
 
     // Commit the root.
+    // 提交本次更新，更新完成之后获取root的剩余过期时间(还需要执行的任务)
     root.finishedWork = null;
     root.remainingExpirationTime = commitRoot(finishedWork);
 }
@@ -1531,3 +1539,421 @@ function finishRendering() {
         throw error;
     }
 }
+
+// 添加DOM子节点
+function appendAllChildren(parent, workInProgress) {
+    // We only have the top Fiber that was created but we need recurse down its
+    // children to find all the terminal nodes.
+    var node = workInProgress.child;
+    while (node !== null) {
+        if (node.tag === HostComponent || node.tag === HostText) {
+            appendInitialChild(parent, node.stateNode);
+        } else if (node.tag === HostPortal) {
+            // If we have a portal child, then we don't want to traverse
+            // down its children. Instead, we'll get insertions from each child in
+            // the portal directly.
+        } else if (node.child !== null) {
+            node.child['return'] = node;
+            node = node.child;
+            continue;
+        }
+        if (node === workInProgress) {
+            return;
+        }
+        while (node.sibling === null) {
+            if (node['return'] === null || node['return'] === workInProgress) {
+                return;
+            }
+            node = node['return'];
+        }
+        node.sibling['return'] = node['return'];
+        node = node.sibling;
+    }
+}
+
+
+function commitPlacement(finishedWork) {
+    // Recursively insert all host nodes into the parent.
+    var parentFiber = getHostParentFiber(finishedWork);
+    var parent = void 0;
+    var isContainer = void 0;
+    switch (parentFiber.tag) {
+        case HostComponent:
+            parent = parentFiber.stateNode;
+            isContainer = false;
+            break;
+        case HostRoot:
+            parent = parentFiber.stateNode.containerInfo;
+            isContainer = true;
+            break;
+        case HostPortal:
+            parent = parentFiber.stateNode.containerInfo;
+            isContainer = true;
+            break;
+        default:
+            invariant(false, 'Invalid host parent fiber. This error is likely caused by a bug in React. Please file an issue.');
+    }
+    // 清空内容
+    if (parentFiber.effectTag & ContentReset) {
+        // Reset the text content of the parent before doing any insertions
+        resetTextContent(parent);
+        // Clear ContentReset from the effect tag
+        parentFiber.effectTag &= ~ContentReset;
+    }
+
+    var before = getHostSibling(finishedWork);
+    // We only have the top Fiber that was inserted but we need recurse down its
+    // children to find all the terminal nodes.
+    var node = finishedWork;
+    while (true) {
+        if (node.tag === HostComponent || node.tag === HostText) {
+            if (before) {
+                if (isContainer) {
+                    insertInContainerBefore(parent, node.stateNode, before);
+                } else {
+                    insertBefore(parent, node.stateNode, before);
+                }
+            } else {
+                if (isContainer) {
+                    appendChildToContainer(parent, node.stateNode);
+                } else {
+                    appendChild(parent, node.stateNode);
+                }
+            }
+        } else if (node.tag === HostPortal) {
+            // If the insertion itself is a portal, then we don't want to traverse
+            // down its children. Instead, we'll get insertions from each child in
+            // the portal directly.
+        } else if (node.child !== null) {
+            node.child['return'] = node;
+            node = node.child;
+            continue;
+        }
+        if (node === finishedWork) {
+            return;
+        }
+        while (node.sibling === null) {
+            if (node['return'] === null || node['return'] === finishedWork) {
+                return;
+            }
+            node = node['return'];
+        }
+        node.sibling['return'] = node['return'];
+        node = node.sibling;
+    }
+}
+
+function commitWork(current, finishedWork) {
+    switch (finishedWork.tag) {
+      case ClassComponent:
+        {
+          return;
+        }
+      case HostComponent:
+        {
+          var _instance8 = finishedWork.stateNode;
+          if (_instance8 != null) {
+            // Commit the work prepared earlier.
+            var newProps = finishedWork.memoizedProps;
+            // For hydration we reuse the update path but we treat the oldProps
+            // as the newProps. The updatePayload will contain the real change in
+            // this case.
+            var oldProps = current !== null ? current.memoizedProps : newProps;
+            var type = finishedWork.type;
+            // TODO: Type the updateQueue to be specific to host components.
+            var updatePayload = finishedWork.updateQueue;
+            finishedWork.updateQueue = null;
+            // updateQueue 以数组的形式展示 [key,value,key,value,...]
+            if (updatePayload !== null) {
+              commitUpdate(_instance8, updatePayload, type, oldProps, newProps, finishedWork);
+            }
+          }
+          return;
+        }
+      case HostText:
+        {
+          !(finishedWork.stateNode !== null) ? invariant(false, 'This should have a text node initialized. This error is likely caused by a bug in React. Please file an issue.') : void 0;
+          var textInstance = finishedWork.stateNode;
+          var newText = finishedWork.memoizedProps;
+          // For hydration we reuse the update path but we treat the oldProps
+          // as the newProps. The updatePayload will contain the real change in
+          // this case.
+          var oldText = current !== null ? current.memoizedProps : newText;
+          commitTextUpdate(textInstance, oldText, newText);
+          return;
+        }
+      case HostRoot:
+        {
+          return;
+        }
+      default:
+        {
+          invariant(false, 'This unit of work tag should not have side-effects. This error is likely caused by a bug in React. Please file an issue.');
+        }
+    }
+  }
+
+  function commitUpdate(domElement, updatePayload, type, oldProps, newProps, internalInstanceHandle) {
+    // Update the props handle so that we know which props are the ones with
+    // with current event handlers.
+    // 更新fiber的属性
+    updateFiberProps(domElement, newProps);
+    // Apply the diff to the DOM node.
+    // diff DOM 更新
+    updateProperties(domElement, updatePayload, type, oldProps, newProps);
+  }
+
+  function updateFiberProps(node, props) {
+    node[internalEventHandlersKey] = props;
+  }
+
+  // Apply the diff.
+function updateProperties(domElement, updatePayload, tag, lastRawProps, nextRawProps) {
+    // Update checked *before* name.
+    // In the middle of an update, it is possible to have multiple checked.
+    // When a checked radio tries to change name, browser makes another radio's checked false.
+
+    // input radio checked属性更新
+    if (tag === 'input' && nextRawProps.type === 'radio' && nextRawProps.name != null) {
+      updateChecked(domElement, nextRawProps);
+    }
+  
+    // 是否是自定义标签
+    var wasCustomComponentTag = isCustomComponent(tag, lastRawProps);
+    var isCustomComponentTag = isCustomComponent(tag, nextRawProps);
+    // Apply the diff.
+    updateDOMProperties(domElement, updatePayload, wasCustomComponentTag, isCustomComponentTag);
+  
+    // TODO: Ensure that an update gets scheduled if any of the special props
+    // changed.
+    switch (tag) {
+      case 'input':
+        // Update the wrapper around inputs *after* updating props. This has to
+        // happen after `updateDOMProperties`. Otherwise HTML5 input validations
+        // raise warnings and prevent the new value from being assigned.
+        updateWrapper(domElement, nextRawProps);
+        break;
+      case 'textarea':
+        updateWrapper$1(domElement, nextRawProps);
+        break;
+      case 'select':
+        // <select> value update needs to occur after <option> children
+        // reconciliation
+        postUpdateWrapper(domElement, nextRawProps);
+        break;
+    }
+  }
+  
+
+  function updateDOMProperties(domElement, updatePayload, wasCustomComponentTag, isCustomComponentTag) {
+    // TODO: Handle wasCustomComponentTag
+    for (var i = 0; i < updatePayload.length; i += 2) {
+      var propKey = updatePayload[i];
+      var propValue = updatePayload[i + 1];
+      if (propKey === STYLE) {
+        setValueForStyles(domElement, propValue, getStack);
+      } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
+        setInnerHTML(domElement, propValue);
+      } else if (propKey === CHILDREN) {
+        setTextContent(domElement, propValue);
+      } else {
+        setValueForProperty(domElement, propKey, propValue, isCustomComponentTag);
+      }
+    }
+  }
+
+  // 预处理update
+  function prepareUpdate (domElement, type, oldProps, newProps, rootContainerInstance, hostContext) {
+    {
+      var hostContextDev = hostContext;
+      if (typeof newProps.children !== typeof oldProps.children && (typeof newProps.children === 'string' || typeof newProps.children === 'number')) {
+        var string = '' + newProps.children;
+        var ownAncestorInfo = updatedAncestorInfo(hostContextDev.ancestorInfo, type, null);
+        validateDOMNesting$1(null, string, ownAncestorInfo);
+      }
+    }
+    // 计算属性变更，生成payload
+    return diffProperties(domElement, type, oldProps, newProps, rootContainerInstance);
+  }
+
+  // 计算属性变更
+  function diffProperties(domElement, tag, lastRawProps, nextRawProps, rootContainerElement) {
+    {
+      validatePropertiesInDevelopment(tag, nextRawProps);
+    }
+  
+    var updatePayload = null;
+  
+    var lastProps = void 0;
+    var nextProps = void 0;
+    switch (tag) {
+      case 'input':
+        lastProps = getHostProps(domElement, lastRawProps);
+        nextProps = getHostProps(domElement, nextRawProps);
+        updatePayload = [];
+        break;
+      case 'option':
+        lastProps = getHostProps$1(domElement, lastRawProps);
+        nextProps = getHostProps$1(domElement, nextRawProps);
+        updatePayload = [];
+        break;
+      case 'select':
+        lastProps = getHostProps$2(domElement, lastRawProps);
+        nextProps = getHostProps$2(domElement, nextRawProps);
+        updatePayload = [];
+        break;
+      case 'textarea':
+        lastProps = getHostProps$3(domElement, lastRawProps);
+        nextProps = getHostProps$3(domElement, nextRawProps);
+        updatePayload = [];
+        break;
+      default:
+        lastProps = lastRawProps;
+        nextProps = nextRawProps;
+        if (typeof lastProps.onClick !== 'function' && typeof nextProps.onClick === 'function') {
+          // TODO: This cast may not be sound for SVG, MathML or custom elements.
+          trapClickOnNonInteractiveElement(domElement);
+        }
+        break;
+    }
+  
+    assertValidProps(tag, nextProps, getStack);
+  
+    var propKey = void 0;
+    var styleName = void 0;
+    var styleUpdates = null;
+
+    // 首先遍历 lastProps，如果 nextProps中不存在，改为清除状态，添加到 updateQueue 中
+    for (propKey in lastProps) {
+      if (nextProps.hasOwnProperty(propKey) || !lastProps.hasOwnProperty(propKey) || lastProps[propKey] == null) {
+        continue;
+      }
+      if (propKey === STYLE) {
+        var lastStyle = lastProps[propKey];
+        for (styleName in lastStyle) {
+          if (lastStyle.hasOwnProperty(styleName)) {
+            if (!styleUpdates) {
+              styleUpdates = {};
+            }
+            styleUpdates[styleName] = '';
+          }
+        }
+      } else if (propKey === DANGEROUSLY_SET_INNER_HTML || propKey === CHILDREN) {
+        // Noop. This is handled by the clear text mechanism.
+      } else if (propKey === SUPPRESS_CONTENT_EDITABLE_WARNING || propKey === SUPPRESS_HYDRATION_WARNING$1) {
+        // Noop
+      } else if (propKey === AUTOFOCUS) {
+        // Noop. It doesn't work on updates anyway.
+      } else if (registrationNameModules.hasOwnProperty(propKey)) {
+        // This is a special case. If any listener updates we need to ensure
+        // that the "current" fiber pointer gets updated so we need a commit
+        // to update this element.
+        if (!updatePayload) {
+          updatePayload = [];
+        }
+      } else {
+        // For all other deleted properties we add it to the queue. We use
+        // the whitelist in the commit phase instead.
+        (updatePayload = updatePayload || []).push(propKey, null);
+      }
+    }
+
+    for (propKey in nextProps) {
+      var nextProp = nextProps[propKey];
+      var lastProp = lastProps != null ? lastProps[propKey] : undefined;
+
+      // 属性值相同，处理下一个属性
+      if (!nextProps.hasOwnProperty(propKey) || nextProp === lastProp || nextProp == null && lastProp == null) {
+        continue;
+      }
+
+      // 处理 STYLE 更新
+      if (propKey === STYLE) {
+        {
+          if (nextProp) {
+            // Freeze the next style object so that we can assume it won't be
+            // mutated. We have already warned for this in the past.
+            Object.freeze(nextProp);
+          }
+        }
+        if (lastProp) {
+          // Unset styles on `lastProp` but not on `nextProp`.
+          for (styleName in lastProp) {
+            if (lastProp.hasOwnProperty(styleName) && (!nextProp || !nextProp.hasOwnProperty(styleName))) {
+              if (!styleUpdates) {
+                styleUpdates = {};
+              }
+              styleUpdates[styleName] = '';
+            }
+          }
+          // Update styles that changed since `lastProp`.
+          for (styleName in nextProp) {
+            if (nextProp.hasOwnProperty(styleName) && lastProp[styleName] !== nextProp[styleName]) {
+              if (!styleUpdates) {
+                styleUpdates = {};
+              }
+              styleUpdates[styleName] = nextProp[styleName];
+            }
+          }
+        } else {
+          // Relies on `updateStylesByID` not mutating `styleUpdates`.
+          if (!styleUpdates) {
+            if (!updatePayload) {
+              updatePayload = [];
+            }
+            updatePayload.push(propKey, styleUpdates);
+          }
+          styleUpdates = nextProp;
+        }
+      } else if (propKey === DANGEROUSLY_SET_INNER_HTML) {
+        var nextHtml = nextProp ? nextProp[HTML] : undefined;
+        var lastHtml = lastProp ? lastProp[HTML] : undefined;
+        if (nextHtml != null) {
+          if (lastHtml !== nextHtml) {
+            (updatePayload = updatePayload || []).push(propKey, '' + nextHtml);
+          }
+        } else {
+          // TODO: It might be too late to clear this if we have children
+          // inserted already.
+        }
+      } else if (propKey === CHILDREN) {
+        if (lastProp !== nextProp && (typeof nextProp === 'string' || typeof nextProp === 'number')) {
+          (updatePayload = updatePayload || []).push(propKey, '' + nextProp);
+        }
+      } else if (propKey === SUPPRESS_CONTENT_EDITABLE_WARNING || propKey === SUPPRESS_HYDRATION_WARNING$1) {
+        // Noop
+      } else if (registrationNameModules.hasOwnProperty(propKey)) {
+        if (nextProp != null) {
+          // We eagerly listen to this even though we haven't committed yet.
+          if (true && typeof nextProp !== 'function') {
+            warnForInvalidEventListener(propKey, nextProp);
+          }
+          ensureListeningTo(rootContainerElement, propKey);
+        }
+        if (!updatePayload && lastProp !== nextProp) {
+          // This is a special case. If any listener updates we need to ensure
+          // that the "current" props pointer gets updated so we need a commit
+          // to update this element.
+          updatePayload = [];
+        }
+      } else {
+        // For any other property we always add it to the queue and then we
+        // filter it out using the whitelist during the commit.
+        (updatePayload = updatePayload || []).push(propKey, nextProp);
+      }
+    }
+    if (styleUpdates) {
+      (updatePayload = updatePayload || []).push(STYLE, styleUpdates);
+    }
+    return updatePayload;
+  }
+
+  function updateCurHostComponent(current, workInProgress, updatePayload, type, oldProps, newProps, rootContainerInstance, currentHostContext) {
+    // TODO: Type this specific to this type of component.
+    workInProgress.updateQueue = updatePayload;
+    // If the update payload indicates that there is a change or if there
+    // is a new ref we mark this as an update. All the work is done in commitWork.
+    if (updatePayload) {
+      markUpdate(workInProgress);
+    }
+  };
