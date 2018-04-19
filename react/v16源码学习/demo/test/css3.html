@@ -1,0 +1,47 @@
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>Document</title>
+    <style>
+        *{
+            margin:0;
+            padding:0;
+        }
+        #app{
+            width:100px;
+            height:100px;
+            background: red;
+            transform: translate(0,0);
+            animation: move 5s linear infinite forwards;
+            -webkit-animation: move 5s linear infinite forwards;
+        }
+        @keyframes move {
+            0%{
+                transform: translate(0,0);
+            }
+            50%{
+                transform: translate(600px,400px);
+            }
+            100%{
+                transform: translate(0,0);
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="app"></div>    
+</body>
+<script>
+   /*  for(var i = 0;i<100000;i++){
+        console.log(i)
+    } */
+
+    window.addEventListener('message',function(){
+        console.log(arguments)
+    });
+
+    window.postMessage('haha','*')
+</script>
+</html>

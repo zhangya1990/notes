@@ -140,10 +140,11 @@
     // 首次插入
 
         // 调和阶段
-        getDerivedStateFromProps 
+        static getDerivedStateFromProps (组件方法，并不是组件实例方法)
         componentWillMount
         UNSAFE_componentWillMount
         processUpdateQueue  如果在以上生命周期当中有setState操作，会在此时解析更新，并赋值给 instance.state
+            // 注意：componentWillMount UNSAFE_componentWillMount processUpdateQueue 只有在没有新的生命周期函数时才会执行，因此，如果在 getDerivedStateFromProps 当中有setState操作，只会讲更新添加到updateQueue中，这里将不会解析更新，因此在render方法中获得的state并不会更新
         render函数,因为上一步解析了updateQueue，所以在componentWillComponent中执行同步setState操作，render函数中可以拿到最新的state
 
         // DOM插入完成之后
@@ -159,8 +160,9 @@
         // 调和阶段
         componentWillReceiveProps
         UNSAFE_componentWillReceiveProps
-        processUpdateQueue(非生命周期钩子)，此时解析的是上一次调度完成之后，根据对应fiber新建的workInProgress，因为上个周期已经处理完componentWillMount中的更新，本次周期尚未触发componentWillUpdate，所以这里只能解析componentDidMount或者componentWillReceiveProps中设置的setState，将其中的回调函数添加到updateQueue.callbackList中
-        getDerivedStateFromProps 
+        processUpdateQueue(非生命周期钩子)，此时解析的是上一次调度完成之后，根据对应fiber新建的workInProgress，因为上个周期已经处理完componentWillMount中的更新，本次周期尚未
+        触发componentWillUpdate，所以这里只能解析componentDidMount或者componentWillReceiveProps中设置的setState，将其中的回调函数添加到updateQueue.callbackList中
+        getDerivedStateFromProps  只有前后两次的props发生改变才会执行
         如果在processUpdateQueue阶段发生错误触发 getDerivedStateFromCatch 
         注：以上阶段合并生成新的state
         checkShouldComponentUpdate
@@ -175,11 +177,14 @@
         componentWillUnmount
 
         // DOM处理完成之后
-        componentDidUpdate 不要在这里调用 setState - -
+        componentDidUpdate 
         updateQueue.callbackList中的回调函数执行
         
         fiber树全部更新到dom中之后
         触发ReactDOM.render中的回调函数
 
-
+    注意：
+    1、在更新阶段，componentWillReceiveProps UNSAFE_componentWillReceiveProps componentWillUpdate UNSAFE_componentWillUpdate 只有在没有新的生命周期函数时才会执行
+    2、切记不要在 componentWillUpdate componentDidUpdate getSnapshotBeforeUpdate 当中调用 setState ，会造成死循环
+    3、以上分析中提到生命周期当中存在的setState，全部指同步调用，异步调用结果完全不同，每次调用，都会执行整个更新流程，触发所有更新相关的生命周期函数
 */
