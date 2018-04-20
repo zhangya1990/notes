@@ -693,6 +693,7 @@ function setInitialDOMProperties(tag, domElement, rootContainerElement, nextProp
         if (true && typeof nextProp !== 'function') {
           warnForInvalidEventListener(propKey, nextProp);
         }
+        // 添加 React 合成事件，处理各种 batchingUpdate，详细处理见 ./event/dispatchEvent
         ensureListeningTo(rootContainerElement, propKey);
       }
     } else if (nextProp != null) {

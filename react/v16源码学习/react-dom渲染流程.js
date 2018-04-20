@@ -188,3 +188,9 @@
     2、切记不要在 componentWillUpdate componentDidUpdate getSnapshotBeforeUpdate 当中调用 setState ，会造成死循环
     3、以上分析中提到生命周期当中存在的setState，全部指同步调用，异步调用结果完全不同，每次调用，都会执行整个更新流程，触发所有更新相关的生命周期函数
 */
+
+/* 
+    react 合成事件
+    合成事件触发时会执行interactiveUpdates { batchingUpdate }，同一个事件的回调函数中多次更新(setState)，效果同生命周期
+
+*/
