@@ -190,7 +190,7 @@
 */
 
 /* 
-    react 合成事件
+    react 合成事件 ./event/
     合成事件触发时会执行interactiveUpdates { batchingUpdate }，同一个事件的回调函数中多次更新(setState)，效果同生命周期
 
 */
