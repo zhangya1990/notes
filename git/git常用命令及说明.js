@@ -9,6 +9,7 @@
 //git checkout branchName  切换分支
 //git branch -d branchName 删除branchName分支
 //git branch -D branchName 强行删除branchName分支
+//git push origin --delete branchName 删除远程分支
 //git checkout -b dev origin/dev 在本地创建远程分支
 //git branch --set-upstream dev origin/dev 指定本地dev和origin/dev的连接
 //git branch --set-upstream-to dev origin/dev 指定本地dev和origin/dev的连接
