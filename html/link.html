@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta http-equiv="X-UA-Compatible" content="ie=edge">
+    <title>link标签中preload、prefetch的区别及作用</title>
+</head>
+
+<body lang="zh-CN" class="reader-black-font eye-protector-processed" style="background-color: rgb(193, 230, 198); transition: background-color 0.3s ease; position: static;padding:30px">
+
+    <div class="note">
+        <div class="post">
+            <div class="article">
+                <h1 class="title">关于Preload, 你应该知道些什么？</h1>
+
+                <!-- 文章内容 -->
+                <div data-note-content="" class="show-content">
+                    <div class="show-content-free">
+                        <p><em>本文是对 Preload 这一新标准的介绍，内容主要翻译自 SmashMagazine 的一篇题为<a href="https://link.jianshu.com?t=https://www.smashingmagazine.com/2016/02/preload-what-is-it-good-for/"
+                                    target="_blank" rel="nofollow">Preload: What Is It Good For?</a>的文章</em></p>
+                        <p><a href="https://link.jianshu.com?t=https://w3c.github.io/preload/" target="_blank" rel="nofollow">Preload</a>
+                            作为一个新的web标准，旨在提高性能和为web开发人员提供更细粒度的加载控制。Preload使开发者能够自定义资源的加载逻辑，且无需忍受基于脚本的资源加载器带来的性能损失。</p>
+                        <p>在 HTML 代码中，它看上去大概是下面这样的一段声明式获取指令(declaratiev fetch directive)。</p>
+                        <pre class="hljs xml"><code class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">link</span> <span class="hljs-attr">rel</span>=<span class="hljs-string">“preload”</span>&gt;</span>
+</code></pre>
+                        <p>拿我们的话来说，通过这一方法我们告诉浏览器开始获取某一特定资源，毕竟我们是作者，知道浏览器很快就会用到这一资源。</p>
+                        <h2>与现有的类似技术的区别</h2>
+                        <p>事实上，关于预加载，我们已经有<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;link rel=“prefetch”&gt;</code>,而且浏览器支持情况还不错。</p>
+                        <p>除此之外，Chrome还支持过<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;link rel=“subresource”&gt;</code>。</p>
+                        <p>但Preload与这两者不同，<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;link rel=“prefetch”&gt;</code>的作用是告诉浏览器加载下一页面可能会用到的资源，注意，是下一页面，而不是当前页面。因此该方法的加载优先级非常低（自然，相比当前页面所需的资源，未来可能会用到的资源就没那么重要了），也就是说该方式的作用是加速下一个页面的加载速度。</p>
+                        <p><code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;link rel=“subresource”&gt;</code>的设计初衷是处理当前页面，但最后还是壮烈牺牲了。因为开发者无法控制资源的加载优先级，因此浏览器（其实也只有
+                            Chrome 和基于 Chrome 的浏览器）在处理此类标签时，优先级很低，到底有多低呢？这么说吧，在大多数情况下，用了等于没用。</p>
+                        <h2>为什么 Preload 更好</h2>
+                        <p>Preload是为处理当前页面所生，这点和 subresource 一样，但他们之间有着细微且意义重大的区别。Preload 有 as 属性，这让浏览器可做一些 subresource
+                            和 prefetch 无法实现的事：</p>
+                        <ul>
+                            <li>浏览器可以设置正确的资源加载优先级，这种方式可以确保资源根据其重要性依次加载， 所以，Preload既不会影响重要资源的加载，又不会让次要资源影响自身的加载。</li>
+                            <li>浏览器可以确保请求是符合内容安全策略的，比如，如果我们的安全策略是<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">Content-Security-Policy: script-src 'self'</code>，只允许浏览器执行自家服务器的脚本，as
+                                值为 script 的外部服务器资源就不会被加载。</li>
+                            <li>浏览器能根据 as 的值发送适当的 Accept 头部信息</li>
+                            <li>浏览器通过 as 值能得知资源类型，因此当获取的资源相同时，浏览器能够判断前面获取的资源是否能重用。</li>
+                        </ul>
+                        <p>Preload 的与众不同还体现在 onload 事件上（至少在 Chrome 中，prefetch 和 subresource
+                            是不支持的）。也就是说你可以定义资源加载完毕后的回调函数。</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> href=<span class="hljs-string">"..."</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"..."</span> onload=<span class="hljs-string">"preloadFinished()"</span>&gt;
+</code></pre>
+                        <p>此外，preload 不会阻塞 windows 的 onload 事件，除非，preload资源的请求刚好来自于会阻塞 window 加载的资源。</p>
+                        <p>结合上面所有这些特征，preload 给我们带来了一些以前不可能实现的功能。</p>
+                        <h2>资源的提前加载</h2>
+                        <p>preload 一个基本的用法是提前加载资源，尽管大多数基于标记语言的资源能被浏览器的预加载器（<a href="https://link.jianshu.com?t=http://calendar.perfplanet.com/2013/big-bad-preloader/"
+                                target="_blank" rel="nofollow">Preloader</a>）尽早发现，但不是所有的资源都是基于标记语言的，比如一些隐藏在 CSS 和
+                            Javascript 中的资源。当浏览器发现自己需要这些资源时已经为时已晚，所以大多数情况，这些资源的加载都会对页面渲染造成延迟。</p>
+                        <blockquote class="eye-protector-processed" style="transition: background-color 0.3s ease; border-left-color: rgba(0, 0, 0, 0.35); background-color: rgb(193, 230, 198);">
+                            <p>Preloader 简介<br>
+                                HTML 解析器在创建 DOM 时如果碰上同步脚本（synchronous script)，解析器会停止创建 DOM，转而去执行脚本。所以，如果资源的获取只发生在解析器创建
+                                DOM时，同步脚本的介入将使网络处于空置状态，尤其是对外部脚本资源来说，当然，页面内的脚本有时也会导致延迟。</p>
+                            <p>预加载器（Preloader）的出现就是为了优化这个过程，预加载器通过分析浏览器对 HTML
+                                文档的早期解析结果（这一阶段叫做“令牌化（tokenization）”），找到可能包含资源的标签（tag），并将这些资源的 URL 收集起来。令牌化阶段的输出将会送到真正的
+                                HTML 解析器手中，而收集起来的资源 URLs 会和资源类型一起被送到读取器（fetcher）手中，读取器会根据这些资源对页面加载速度的影响进行有次序地加载。</p>
+                        </blockquote>
+                        <p>现在，有了 preload，你可以通过一段类似下面的代码对浏览器说，”嗨，浏览器！这个资源你后面会用到，现在就加载它吧。“</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> href=<span class="hljs-string">"late_discovered_thing.js"</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"script"</span>&gt;
+</code></pre>
+                        <p>as 属性的作用是告诉浏览器被加载的是什么资源，可能的 as 值包括：</p>
+                        <ul>
+                            <li>"script"</li>
+                            <li>"style"</li>
+                            <li>"image"</li>
+                            <li>"media"</li>
+                            <li>"document"</li>
+                        </ul>
+                        <p>更多请参考<strong><a href="https://link.jianshu.com?t=https://fetch.spec.whatwg.org/#concept-request-destination"
+                                    target="_blank" rel="nofollow">fetch spec</a></strong><br>
+                            忽略 as 属性，或者错误的 as 属性会使 preload 等同于 XHR 请求，浏览器不知道加载的是什么，因此会赋予此类资源非常低的加载优先级。</p>
+                        <h2>对字体的提前加载</h2>
+                        <p>web 字体是较晚才能被发现的关键资源（late-discovered critical resources）中常见的一类 。web 字体对页面文字的渲染资至关重要，但却被深埋 CSS
+                            中，即便是预加载器有解析 CSS，也无法确定包含字体信息的选择器是否会真正应用在 DOM
+                            节点上。理论上，这个问题可以被解决，但实际情况是没有一个浏览器解决了这个问题。而且，即便是问题得到了解决，浏览器能对字体文件做出合理的预加载，一旦有新的 css
+                            规则覆盖了现有字体规则，前面的预加载就多余了。</p>
+                        <p>总之，非常复杂。</p>
+                        <p>但有了 preload 这个标准，简单的一段代码就能搞定字体的预加载。</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> href=<span class="hljs-string">"font.woff2"</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"font"</span> type=<span class="hljs-string">"font/woff2"</span> crossorigin&gt;
+</code></pre>
+                        <p>需要注意的一点是：crossorigin 属性是必须的，即便是字体资源在自家服务器上，因为用户代理必须采用匿名模式来获取字体资源。</p>
+                        <p>type 属性可以确保浏览器只获取自己支持的资源。尽管Chrome 支持 WOFF2，也是目前唯一支持 preload 的浏览器，但未来或许会有更多的浏览器支持
+                            preload，而这些浏览器支不支持 WOFF2 就不好说了。</p>
+                        <h2>动态加载，但不执行</h2>
+                        <p>另外一个有意思的场景也因为 preload
+                            的出现变得可能——当你想加载某一资源但却不想执行它。比如说，你想在页面生命周期的某一时刻执行一段脚本，而你无法对这段脚本做任何修改，不可能为它创建一个所谓的 runNow（）函数。</p>
+                        <p>在 preload 出现之前，你能做的很有限。如果你的方法是在希望脚本执行的位置插入脚本，由于脚本只有在加载完成以后才能被浏览器执行，也就是说你得等上一会儿。如果采用 XHR
+                            提前加载脚本，浏览器会拒绝重用这段脚本，有些情况下，你可以使用 eval 函数来执行这段脚本，但该方法并不总是行得通，也不是完全没有副作用。</p>
+                        <p>现在有了 preload，一切变得可能</p>
+                        <pre class="hljs javascript"><code class="javascript"><span class="hljs-keyword">var</span> link = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">"link"</span>);
+link.href = <span class="hljs-string">"myscript.js"</span>;
+link.rel = <span class="hljs-string">"preload"</span>;
+link.as = <span class="hljs-string">"script"</span>;
+<span class="hljs-built_in">document</span>.head.appendChild(link);
+</code></pre>
+                        <p>上面这段代码可以让你预先加载脚本，下面这段代码可以让脚本执行</p>
+                        <pre class="hljs javascript"><code class="javascript"><span class="hljs-keyword">var</span> script = <span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">"script"</span>);
+script.src = <span class="hljs-string">"myscript.js"</span>;
+<span class="hljs-built_in">document</span>.body.appendChild(script);
+</code></pre>
+                        <h2>基于标记语言的异步加载</h2>
+                        <p>先看代码</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"style"</span> href=<span class="hljs-string">"asyncstyle.css"</span> onload=<span class="hljs-string">"this.rel='stylesheet'"</span>&gt;
+</code></pre>
+                        <p>preload 的 onload 事件可以在资源加载完成后修改 rel 属性，从而实现非常酷的异步资源加载。</p>
+                        <p>脚本也可以采用这种方法实现异步加载</p>
+                        <p>难道我们不是已经有了<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;script async&gt;</code>?
+                            <code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">&lt;scirpt async&gt;</code>虽好，但却会阻塞
+                            window 的 onload 事件。某些情况下，你可能希望这样，但总有一些情况你不希望阻塞 window 的 onload 。</p>
+                        <p>举个例子，你想尽可能快的加载一段统计页面访问量的代码，但又不愿意这段代码的加载给页面渲染造成延迟从而影响用户体验，关键是，你不想延迟 window 的 onload 事件。</p>
+                        <p>有了preload， 分分钟搞定。</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"script"</span> href=<span class="hljs-string">"async_script.js"</span>
+      onload=<span class="hljs-string">"var script = document.createElement('script'); script.src = this.href; document.body.appendChild(script);"</span>&gt;
+</code></pre>
+
+<h2>预加载模块</h2>
+<p>你可以使用<pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"modulepreload"</span>&gt;
+</code></pre>进一步优化你的模块的加载(delivery)。
+    这样，浏览器可以预加载和预编译模块以及它的依赖。</p>
+    <pre class="hljs xml"><code class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">link</span> <span class="hljs-attr">rel</span>=<span class="hljs-string">"modulepreload"</span> <span class="hljs-attr">href</span>=<span class="hljs-string">"lib.mjs"</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">link</span> <span class="hljs-attr">rel</span>=<span class="hljs-string">"modulepreload"</span> <span class="hljs-attr">href</span>=<span class="hljs-string">"main.mjs"</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">type</span>=<span class="hljs-string">"module"</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"main.mjs"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
+        <span class="hljs-tag">&lt;<span class="hljs-name">script</span> <span class="hljs-attr">nomodule</span> <span class="hljs-attr">src</span>=<span class="hljs-string">"fallback.js"</span>&gt;</span><span class="undefined"></span><span class="hljs-tag">&lt;/<span class="hljs-name">script</span>&gt;</span>
+        </code></pre>
+        <p>这种方式对有大型依赖树的应用至关重要。没有<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">rel="modulepreload"</code>，浏览器需要发起多次http请求去得到整个依赖树。然后，如果你用<code class="eye-protector-processed" style="transition: background-color 0.3s ease; background-color: rgb(193, 230, 198);">rel="modulepreload"</code>声明了整个应用的脚本列表，浏览器就不需要去逐步的去解析并请求这些依赖。</p>
+
+                        <h2>响应式加载</h2>
+                        <p>preload 是一个link，根据规范有一个media 属性（现在 Chrome 还不支持，不过快了），该属性使得选择性加载成为可能。</p>
+                        <p>有什么用处呢？假设你的站点同时支持桌面和移动端的访问，在使用桌面浏览器访问时，你希望呈现一张可交互的大地图，而在移动端，一张较小的静态地图就足够了。</p>
+                        <p>你肯定不想同时加载两个资源，现在常见的做法是通过 JS 判断当前浏览器类型动态地加载资源，但这样一来，浏览器的预加载器就无法及时发现他们，可能耽误加载时机，影响用户体验和
+                            SpeedIndex 评分。</p>
+                        <p>怎样才能让浏览器尽可能早的发现这些资源呢？还是 Preload!</p>
+                        <p>通过 Preload，我们可以提前加载资源，利用 media 属性，浏览器只会加载需要的资源。</p>
+                        <pre class="hljs javascript"><code class="javascript">&lt;link rel=<span class="hljs-string">"preload"</span> <span class="hljs-keyword">as</span>=<span class="hljs-string">"image"</span> href=<span class="hljs-string">"map.png"</span> media=<span class="hljs-string">"(max-width: 600px)"</span>&gt;
+<span class="xml"><span class="hljs-tag">&lt;<span class="hljs-name">link</span> <span class="hljs-attr">rel</span>=<span class="hljs-string">"preload"</span> <span class="hljs-attr">as</span>=<span class="hljs-string">"script"</span> <span class="hljs-attr">href</span>=<span class="hljs-string">"map.js"</span> <span class="hljs-attr">media</span>=<span class="hljs-string">"(min-width: 601px)"</span>&gt;</span>
+</span></code></pre>
+                        <h2>HTTP 头</h2>
+                        <p>Preload 还有一个特性是其可以通过 HTTP 头信息被呈现。也就是说上文中大多数的基于标记语言的声明可以通过 HTTP 响应头实现。（唯一的例外是有 onload
+                            事件的例子，我们不可能在 HTTP 头信息中定义事件处理函数。）</p>
+                        <pre class="hljs javascript"><code class="javascript">Link: &lt;thing_to_load.js&gt;;rel="preload";as="script"
+Link: &lt;thing_to_load.woff2&gt;;rel="preload";as="font";crossorigin
+</code></pre>
+                        <p>这一方式在有些场景尤其有用，比如，当负责优化的人员与页面开发人员不是同一人时（也就是说优化人员可能无法或者不想修改页面代码），还有一个杰出的例子是外部优化引擎（External
+                            optimization engine），该引擎对内容进行扫描并优化。</p>
+                        <h2>特征检查 （Feature Detection）</h2>
+                        <p>前面所有的列子都基于一种假设——浏览器一定程度上支持 preload，至少实现了脚本和样式加载等基本功能。但如果这个假设不成立了。一切都将是然并卵。</p>
+                        <p>为了判断浏览器是否支持 preload，我们修改了 DOM 的规范从而能够获知 rel 支持那些值（是否支持 rel=‘preload’）。</p>
+                        <p>至于如何进行检查，原文中没有，但 Github有一段代码可供参考。</p>
+                        <pre class="hljs javascript"><code class="javascript"><span class="hljs-keyword">var</span> DOMTokenListSupports = <span class="hljs-function"><span class="hljs-keyword">function</span>(<span class="hljs-params">tokenList, token</span>) </span>{
+  <span class="hljs-keyword">if</span> (!tokenList || !tokenList.supports) {
+    <span class="hljs-keyword">return</span>;
+  }
+  <span class="hljs-keyword">try</span> {
+    <span class="hljs-keyword">return</span> tokenList.supports(token);
+  } <span class="hljs-keyword">catch</span> (e) {
+    <span class="hljs-keyword">if</span> (e <span class="hljs-keyword">instanceof</span> <span class="hljs-built_in">TypeError</span>) {
+      <span class="hljs-built_in">console</span>.log(<span class="hljs-string">"The DOMTokenList doesn't have a supported tokens list"</span>);
+    } <span class="hljs-keyword">else</span> {
+      <span class="hljs-built_in">console</span>.error(<span class="hljs-string">"That shouldn't have happened"</span>);
+    }
+  }
+};
+
+<span class="hljs-keyword">var</span> linkSupportsPreload = DOMTokenListSupports(<span class="hljs-built_in">document</span>.createElement(<span class="hljs-string">"link"</span>).relList, <span class="hljs-string">"preload"</span>);
+<span class="hljs-keyword">if</span> (!linkSupportsPreload) {
+  <span class="hljs-comment">// Dynamically load the things that relied on preload.</span>
+}
+</code></pre>
+                        <h2>是否可以用 HTTP/2 Push 完成 preload 的工作？</h2>
+                        <p>当然不行，尽管有一些相同的特性，但总的来说，他们的关系是互补而不是取代。</p>
+                        <p>HTTP/2 Push 的优势是能够主动推送资源给浏览器，也就是说，�服务器甚至不需要等到资源请求就能将资源推送给浏览器。</p>
+                        <p>而 Preload 的优势在于其加载过程是透明的，一旦资源加载完毕或出现异常，应用可以获得事件通知。这一点是 HTTP/2 Push所不具备的。另外，Preload
+                            还能加载第三方资源，但 HTTP/2 Push 不能。</p>
+                        <p>此外，HTTP/2 Push 没办法将浏览器的缓存和非全局 cookie （non-global cookie）
+                            考虑进去。也就是说，服务器推送的内容可能已经存在于客户端的缓存中，从而导致毫无意义的网络传输。（不过一份新的规范旨在解决该问题——<a href="https://link.jianshu.com?t=https://tools.ietf.org/html/draft-kazuho-h2-cache-digest-00"
+                                target="_blank" rel="nofollow">cache digest specification</a>，Github 上的 一个轻量级 Web服务<a
+                                href="https://link.jianshu.com?t=https://github.com/h2o/h2o" target="_blank" rel="nofollow">H2O</a>器实现了该功能，H2O在1.5版中引入了基于cookie
+                            的<a href="https://link.jianshu.com?t=https://github.com/h2o/h2o/pull/432" target="_blank"
+                                rel="nofollow">cache-aware server push</a>，原理是在首次 Server Push
+                            完成后，在客户端存一个指纹，服务端后续检查到指纹存在时，先在指纹中查询要 Push 的资源，没查到才推送），但是非全局的 cookie就没这么好运了。对于这类型的资源，Preload
+                            才是你的朋友。</p>
+                        <p>Preload还有一个HTTP/2 Push 所不具备的能力是可以进行内容协商（content negotiation）,也就是说如果你想通过 <a href="https://link.jianshu.com?t=https://www.smashingmagazine.com/2016/01/leaner-responsive-images-client-hints/"
+                                target="_blank" rel="nofollow">Client-Hints</a>或者 HTTP 头的 accept 信息获取最合适的资源格式，HTTP/2
+                            Push 帮不了你。</p>
+                        <div class="image-package">
+                            <div class="image-container eye-protector-processed" style="max-width: 345px; max-height: 86px; transition: background-color 0.3s ease; background-color: transparent;">
+                                <div class="image-container-fill" style="padding-bottom: 24.93%;"></div>
+
+                            </div>
+
+                        </div>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+</body>
+
+</html>
