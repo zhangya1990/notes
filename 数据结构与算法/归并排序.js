@@ -1,17 +1,17 @@
 // 先分解，再分别组合成有序数组，依次向上归并为最终的有序数组(内存占用较大)
 
 
-var arr = [2,5,6,3,5,6,5,8,7,8,7,9,0,12,45,74,324,75,43,7,86,5,75];
+// var arr = [2,5,6,3,5,6,5,8,7,8,7,9,0,12,45,74,324,75,43,7,86,5,75];
 
 function getRandom(){
     return Math.round(Math.random()*100);
 }
-// var arr = [];
-// for(var i = 0;i<100;i++){
-//     arr.push(getRandom())
-// } 
+var arr = [];
+for(var i = 0;i<100;i++){
+    arr.push(getRandom())
+} 
 
-/* function sort(arr){
+function sort1(arr){
     var len = arr.length;
     if(len  == 1){
         return arr
@@ -19,12 +19,12 @@ function getRandom(){
     var breakIndex = Math.ceil(len/2);
     var left = arr.slice(0,breakIndex);
     var right = arr.slice(breakIndex);
-    return mergeSort(left,right)
+    return mergeSort1(left,right)
 }
- */
-/* function mergeSort(arr1,arr2){
-    arr1 = sort(arr1);
-    arr2 = sort(arr2);
+
+function mergeSort1(arr1,arr2){
+    arr1 = sort1(arr1);
+    arr2 = sort1(arr2);
     var i = j = 0;
     var temp = [];
     while(i<arr1.length && j<arr2.length){
@@ -40,7 +40,8 @@ function getRandom(){
         temp = temp.concat(arr1.slice(i))
     }
     return temp
-} */
+}
+
 
 
 
@@ -62,7 +63,6 @@ function mergeSort(arr1=[],arr2=[]){
     return temp
 }
 
-console.log(sort(arr))
 
 
 function sort(arr){
@@ -84,3 +84,16 @@ function sort(arr){
 function toArray(m){
     return typeof m == 'undefined' ? [] : Array.isArray(m) ? m : [m]
 }
+
+
+console.time('sort1')
+// console.log(sort1(arr))
+sort1(arr)
+console.timeEnd('sort1')
+
+
+console.time('sort')
+// console.log(sort(arr))
+sort(arr)
+console.timeEnd('sort')
+
